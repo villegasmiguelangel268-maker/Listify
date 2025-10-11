@@ -24,9 +24,10 @@ data class GroceryItem(
     var isBought: Boolean = false
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navController: NavController) {
-    // Using mutableStateListOf for live state updates
+    // Mutable list for live updates
     val groceryList = remember {
         mutableStateListOf(
             GroceryItem(1, "Apples", 5),
@@ -54,7 +55,7 @@ fun HomeScreen(navController: NavController) {
                         fontSize = 20.sp
                     )
                 },
-                colors = TopAppBarDefaults.smallTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(  // ✅ fixed
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
                 )
@@ -128,9 +129,9 @@ fun GroceryItemCard(
                 IconButton(onClick = onToggleBought) {
                     Icon(
                         imageVector = if (item.isBought)
-                            Icons.Default.CheckBox
+                            Icons.Filled.CheckBox   // ✅ fixed import reference
                         else
-                            Icons.Default.CheckBoxOutlineBlank,
+                            Icons.Filled.CheckBoxOutlineBlank,
                         contentDescription = "Mark as bought",
                         tint = MaterialTheme.colorScheme.primary
                     )
@@ -154,7 +155,7 @@ fun GroceryItemCard(
 
             IconButton(onClick = onDelete) {
                 Icon(
-                    imageVector = Icons.Default.Delete,
+                    imageVector = Icons.Filled.Delete,
                     contentDescription = "Delete Item",
                     tint = MaterialTheme.colorScheme.error
                 )
