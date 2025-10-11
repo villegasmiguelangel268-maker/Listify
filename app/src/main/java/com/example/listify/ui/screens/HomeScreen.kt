@@ -1,5 +1,6 @@
 package com.example.listify.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,32 +10,81 @@ import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import java.io.Serializable
 
+// ✅ Data model
 data class GroceryItem(
     val id: Int,
     val name: String,
     val quantity: Int,
     val category: String = "",
     var isBought: Boolean = false
+) : Serializable
+
+/**
+ * ✅ Proper saver for SnapshotStateList<GroceryItem>
+ * (function name now follows Kotlin naming convention)
+ */
+fun groceryItemListSaver() = listSaver<SnapshotStateList<GroceryItem>, Map<String, Any>>(
+    save = { list ->
+        list.map { item ->
+            mapOf(
+                "id" to item.id,
+                "name" to item.name,
+                "quantity" to item.quantity,
+                "category" to item.category,
+                "isBought" to item.isBought
+            )
+        }
+    },
+    restore = { saved ->
+        mutableStateListOf<GroceryItem>().apply {
+            saved.forEach { map ->
+                add(
+                    GroceryItem(
+                        id = map["id"] as Int,
+                        name = map["name"] as String,
+                        quantity = map["quantity"] as Int,
+                        category = map["category"] as String,
+                        isBought = map["isBought"] as Boolean
+                    )
+                )
+            }
+        }
+    }
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navController: NavController) {
-    // Mutable list for live updates
-    val groceryList = remember {
-        mutableStateListOf(
-            GroceryItem(1, "Apples", 5),
-            GroceryItem(2, "Bread", 2),
-            GroceryItem(3, "Milk", 1),
-            GroceryItem(4, "Eggs", 12)
-        )
+    // ✅ Remember list across rotation
+    val groceryList: SnapshotStateList<GroceryItem> =
+        rememberSaveable(saver = groceryItemListSaver()) {
+            mutableStateListOf()
+        }
+
+    // ✅ Handle new or edited items
+    val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
+    LaunchedEffect(Unit) {
+        savedStateHandle?.getLiveData<GroceryItem>("item")?.observeForever { item ->
+            val existingIndex = groceryList.indexOfFirst { it.id == item.id }
+            if (existingIndex >= 0) {
+                groceryList[existingIndex] = item
+            } else {
+                groceryList.add(item)
+            }
+            savedStateHandle.remove<GroceryItem>("item")
+        }
     }
 
     Scaffold(
@@ -55,7 +105,7 @@ fun HomeScreen(navController: NavController) {
                         fontSize = 20.sp
                     )
                 },
-                colors = TopAppBarDefaults.topAppBarColors(  // ✅ fixed
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
                 )
@@ -92,8 +142,12 @@ fun HomeScreen(navController: NavController) {
                                     groceryList[index].copy(isBought = !item.isBought)
                             }
                         },
-                        onDelete = {
-                            groceryList.remove(item)
+                        onDelete = { groceryList.remove(item) },
+                        onEdit = {
+                            navController.currentBackStackEntry
+                                ?.savedStateHandle
+                                ?.set("editItem", item)
+                            navController.navigate("add")
                         }
                     )
                 }
@@ -106,10 +160,13 @@ fun HomeScreen(navController: NavController) {
 fun GroceryItemCard(
     item: GroceryItem,
     onToggleBought: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onEdit: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onEdit() },
         elevation = CardDefaults.cardElevation(4.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (item.isBought)
@@ -129,7 +186,7 @@ fun GroceryItemCard(
                 IconButton(onClick = onToggleBought) {
                     Icon(
                         imageVector = if (item.isBought)
-                            Icons.Filled.CheckBox   // ✅ fixed import reference
+                            Icons.Filled.CheckBox
                         else
                             Icons.Filled.CheckBoxOutlineBlank,
                         contentDescription = "Mark as bought",

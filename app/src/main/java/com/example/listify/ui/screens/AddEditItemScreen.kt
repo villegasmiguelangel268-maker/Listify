@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -18,9 +19,9 @@ fun AddEditItemScreen(
     navController: NavController,
     existingItem: GroceryItem? = null
 ) {
-    var name by remember { mutableStateOf(existingItem?.name ?: "") }
-    var quantity by remember { mutableStateOf(existingItem?.quantity?.toString() ?: "") }
-    var category by remember { mutableStateOf(existingItem?.category ?: "") }
+    var name by rememberSaveable { mutableStateOf(existingItem?.name ?: "") }
+    var quantity by rememberSaveable { mutableStateOf(existingItem?.quantity?.toString() ?: "") }
+    var category by rememberSaveable { mutableStateOf(existingItem?.category ?: "") }
 
     Scaffold(
         topBar = {
@@ -41,7 +42,7 @@ fun AddEditItemScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(   // ✅ compatible with all versions
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
                 )
@@ -97,8 +98,21 @@ fun AddEditItemScreen(
 
                 Button(
                     onClick = {
-                        // In prototype: Just return to Home for now
-                        navController.navigate("home")
+                        if (name.isNotBlank() && quantity.isNotBlank()) {
+                            val item = GroceryItem(
+                                id = existingItem?.id ?: (0..999999).random(),
+                                name = name,
+                                quantity = quantity.toInt(),
+                                category = category
+                            )
+
+                            // ✅ Send back to HomeScreen safely
+                            navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.set("item", item)
+
+                            navController.popBackStack()
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
