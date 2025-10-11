@@ -1,6 +1,8 @@
 package com.example.listify.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,7 +32,16 @@ fun AddEditItemScreen(
                         fontSize = 20.sp
                     )
                 },
-                colors = TopAppBarDefaults.smallTopAppBarColors(
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(   // ✅ compatible with all versions
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
                 )
@@ -86,7 +97,7 @@ fun AddEditItemScreen(
 
                 Button(
                     onClick = {
-                        // In prototype: Simply go back to home (saving will come in Phase 4)
+                        // In prototype: Just return to Home for now
                         navController.navigate("home")
                     },
                     colors = ButtonDefaults.buttonColors(

@@ -38,7 +38,7 @@ fun SplashScreen(navController: NavController) {
             verticalArrangement = Arrangement.Center
         ) {
             Image(
-                painter = painterResource(id = R.drawable.listify_logo),
+                painter = painterResource(id = R.drawable.listify),
                 contentDescription = "Listify Logo",
                 modifier = Modifier.size(120.dp)
             )
@@ -55,7 +55,7 @@ fun SplashScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Smart Grocery List App",
+                text = "Grocery List App",
                 fontSize = 16.sp,
                 color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
             )
