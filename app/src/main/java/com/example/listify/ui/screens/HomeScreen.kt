@@ -20,20 +20,19 @@ data class GroceryItem(
     val id: Int,
     val name: String,
     val quantity: Int,
+    val category: String = "",
     var isBought: Boolean = false
 )
 
 @Composable
 fun HomeScreen(navController: NavController) {
-    // Mock grocery list
-    var groceryList by remember {
-        mutableStateOf(
-            listOf(
-                GroceryItem(1, "Apples", 5),
-                GroceryItem(2, "Bread", 2),
-                GroceryItem(3, "Milk", 1),
-                GroceryItem(4, "Eggs", 12)
-            )
+    // Using mutableStateListOf for live state updates
+    val groceryList = remember {
+        mutableStateListOf(
+            GroceryItem(1, "Apples", 5),
+            GroceryItem(2, "Bread", 2),
+            GroceryItem(3, "Milk", 1),
+            GroceryItem(4, "Eggs", 12)
         )
     }
 
@@ -62,25 +61,41 @@ fun HomeScreen(navController: NavController) {
             )
         }
     ) { padding ->
-        LazyColumn(
-            contentPadding = padding,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            items(groceryList, key = { it.id }) { item ->
-                GroceryItemCard(
-                    item = item,
-                    onToggleBought = {
-                        groceryList = groceryList.map {
-                            if (it.id == item.id) it.copy(isBought = !it.isBought) else it
-                        }
-                    },
-                    onDelete = {
-                        groceryList = groceryList.filterNot { it.id == item.id }
-                    }
+        if (groceryList.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No items yet. Tap + to add.",
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 )
+            }
+        } else {
+            LazyColumn(
+                contentPadding = padding,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                items(groceryList, key = { it.id }) { item ->
+                    GroceryItemCard(
+                        item = item,
+                        onToggleBought = {
+                            val index = groceryList.indexOf(item)
+                            if (index >= 0) {
+                                groceryList[index] =
+                                    groceryList[index].copy(isBought = !item.isBought)
+                            }
+                        },
+                        onDelete = {
+                            groceryList.remove(item)
+                        }
+                    )
+                }
             }
         }
     }
@@ -93,8 +108,7 @@ fun GroceryItemCard(
     onDelete: () -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(4.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (item.isBought)
@@ -124,11 +138,18 @@ fun GroceryItemCard(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                Text(
-                    text = "${item.name} (${item.quantity})",
-                    fontSize = 18.sp,
-                    fontWeight = if (item.isBought) FontWeight.Light else FontWeight.Medium
-                )
+                Column {
+                    Text(
+                        text = item.name,
+                        fontSize = 18.sp,
+                        fontWeight = if (item.isBought) FontWeight.Light else FontWeight.Medium
+                    )
+                    Text(
+                        text = "Qty: ${item.quantity} ${if (item.category.isNotEmpty()) " | ${item.category}" else ""}",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        fontSize = 14.sp
+                    )
+                }
             }
 
             IconButton(onClick = onDelete) {
