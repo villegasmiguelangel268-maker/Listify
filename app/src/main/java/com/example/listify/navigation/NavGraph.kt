@@ -10,23 +10,22 @@ import com.example.listify.ui.screens.*
 fun AppNavGraph(navController: NavHostController) {
     NavHost(
         navController = navController,
-        startDestination = "home" // set "splash" if you have a splash screen
+        startDestination = "splash" // ✅ Make sure splash is the start
     ) {
-        composable("splash") {
-            SplashScreen(navController)
-        }
-
-        composable("home") {
-            HomeScreen(navController)
-        }
-
+        composable("splash") { SplashScreen(navController) }
+        composable("home") { HomeScreen(navController) }
         composable("add") {
-            val existingItem =
-                navController.previousBackStackEntry
-                    ?.savedStateHandle
-                    ?.get<GroceryItem>("editItem")
+            // ✅ Retrieve editItem from the *previous* screen
+            val editItem = navController.previousBackStackEntry
+                ?.savedStateHandle
+                ?.get<GroceryItem>("editItem")
 
-            AddEditItemScreen(navController, existingItem)
+            AddEditItemScreen(
+                navController = navController,
+                existingItem = editItem
+            )
         }
+
+
     }
 }

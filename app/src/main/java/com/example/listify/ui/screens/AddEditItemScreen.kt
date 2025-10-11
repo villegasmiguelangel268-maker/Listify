@@ -19,6 +19,7 @@ fun AddEditItemScreen(
     navController: NavController,
     existingItem: GroceryItem? = null
 ) {
+    // ✅ Pre-fill fields if editing
     var name by rememberSaveable { mutableStateOf(existingItem?.name ?: "") }
     var quantity by rememberSaveable { mutableStateOf(existingItem?.quantity?.toString() ?: "") }
     var category by rememberSaveable { mutableStateOf(existingItem?.category ?: "") }
@@ -99,17 +100,22 @@ fun AddEditItemScreen(
                 Button(
                     onClick = {
                         if (name.isNotBlank() && quantity.isNotBlank()) {
-                            val item = GroceryItem(
+                            val newItem = GroceryItem(
                                 id = existingItem?.id ?: (0..999999).random(),
                                 name = name,
                                 quantity = quantity.toInt(),
-                                category = category
+                                category = category,
+                                isBought = existingItem?.isBought ?: false
                             )
 
-                            // ✅ Send back to HomeScreen safely
                             navController.previousBackStackEntry
                                 ?.savedStateHandle
-                                ?.set("item", item)
+                                ?.set("item", newItem)
+
+                            // ✅ Clear the old edit item
+                            navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.remove<GroceryItem>("editItem")
 
                             navController.popBackStack()
                         }
@@ -120,6 +126,7 @@ fun AddEditItemScreen(
                 ) {
                     Text("Save")
                 }
+
             }
         }
     }
