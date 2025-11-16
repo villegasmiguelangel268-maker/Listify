@@ -18,7 +18,7 @@ import com.example.listify.R
 
 @Composable
 fun SplashScreen(navController: NavController) {
-    // Navigate to Home after 2 seconds
+
     LaunchedEffect(Unit) {
         delay(2000)
         navController.navigate("home") {
@@ -26,35 +26,29 @@ fun SplashScreen(navController: NavController) {
         }
     }
 
-    // ✅ Background set to white
     Surface(
         color = Color.White,
         modifier = Modifier.fillMaxSize()
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
+            modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Image(
                 painter = painterResource(id = R.drawable.listify),
                 contentDescription = "Listify Logo",
-                modifier = Modifier.size(120.dp)
+                modifier = Modifier.size(140.dp)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ✅ Text turned black
             Text(
                 text = "Listify",
                 fontSize = 32.sp,
-                color = Color.Black,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
             )
-
-            Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = "Grocery List App",

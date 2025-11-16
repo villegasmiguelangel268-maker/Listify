@@ -5,27 +5,30 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.listify.ui.screens.*
+import com.example.listify.GroceryItem
 
 @Composable
 fun AppNavGraph(navController: NavHostController) {
     NavHost(
         navController = navController,
-        startDestination = "splash" // ✅ Make sure splash is the start
+        startDestination = "splash"
     ) {
+
         composable("splash") { SplashScreen(navController) }
+
         composable("home") { HomeScreen(navController) }
+
         composable("add") {
-            // ✅ Retrieve editItem from the *previous* screen
-            val editItem = navController.previousBackStackEntry
-                ?.savedStateHandle
-                ?.get<GroceryItem>("editItem")
+
+            val editItem =
+                navController.previousBackStackEntry
+                    ?.savedStateHandle
+                    ?.get<GroceryItem>("editItem")
 
             AddEditItemScreen(
                 navController = navController,
                 existingItem = editItem
             )
         }
-
-
     }
 }

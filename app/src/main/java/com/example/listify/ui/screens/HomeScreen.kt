@@ -5,87 +5,36 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckBox
-import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.listSaver
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.snapshots.SnapshotStateList
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.sp   // ✅ FIXED — REQUIRED FOR fontSize
 import androidx.navigation.NavController
-import java.io.Serializable
+import com.example.listify.GroceryItem
 
-// ✅ Data model
-data class GroceryItem(
-    val id: Int,
-    val name: String,
-    val quantity: Int,
-    val category: String = "",
-    var isBought: Boolean = false
-) : Serializable
-
-/**
- * ✅ Proper saver for SnapshotStateList<GroceryItem>
- * (function name now follows Kotlin naming convention)
- */
-fun groceryItemListSaver() = listSaver<SnapshotStateList<GroceryItem>, Map<String, Any>>(
-    save = { list ->
-        list.map { item ->
-            mapOf(
-                "id" to item.id,
-                "name" to item.name,
-                "quantity" to item.quantity,
-                "category" to item.category,
-                "isBought" to item.isBought
-            )
-        }
-    },
-    restore = { saved ->
-        mutableStateListOf<GroceryItem>().apply {
-            saved.forEach { map ->
-                add(
-                    GroceryItem(
-                        id = map["id"] as Int,
-                        name = map["name"] as String,
-                        quantity = map["quantity"] as Int,
-                        category = map["category"] as String,
-                        isBought = map["isBought"] as Boolean
-                    )
-                )
-            }
-        }
-    }
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navController: NavController) {
-    // ✅ Remember list across rotation
-    val groceryList: SnapshotStateList<GroceryItem> =
-        rememberSaveable(saver = groceryItemListSaver()) {
-            mutableStateListOf()
-        }
 
-    // ✅ Handle new or edited items
-    val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
-    LaunchedEffect(Unit) {
-        savedStateHandle?.getLiveData<GroceryItem>("item")?.observeForever { item ->
-            val existingIndex = groceryList.indexOfFirst { it.id == item.id }
-            if (existingIndex >= 0) {
-                groceryList[existingIndex] = item
+    val groceryList = remember { mutableStateListOf<GroceryItem>() }
+
+    // Listen for new item
+    navController.currentBackStackEntry
+        ?.savedStateHandle
+        ?.getLiveData<GroceryItem>("item")
+        ?.observeForever { newItem ->
+
+            val index = groceryList.indexOfFirst { it.id == newItem.id }
+
+            if (index == -1) {
+                groceryList.add(newItem)
             } else {
-                groceryList.add(item)
+                groceryList[index] = newItem
             }
-            savedStateHandle.remove<GroceryItem>("item")
         }
-    }
 
     Scaffold(
         floatingActionButton = {
@@ -93,60 +42,44 @@ fun HomeScreen(navController: NavController) {
                 onClick = { navController.navigate("add") },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Text("+", color = MaterialTheme.colorScheme.onPrimary, fontSize = 24.sp)
-            }
-        },
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "My Grocery List",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Add",
+                    tint = MaterialTheme.colorScheme.onPrimary
                 )
-            )
+            }
         }
     ) { padding ->
-        if (groceryList.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "No items yet. Tap + to add.",
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                )
-            }
-        } else {
-            LazyColumn(
-                contentPadding = padding,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-            ) {
-                items(groceryList, key = { it.id }) { item ->
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+
+            Text(
+                text = "Grocery List",
+                style = MaterialTheme.typography.titleLarge
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                items(groceryList) { item ->
                     GroceryItemCard(
                         item = item,
-                        onToggleBought = {
-                            val index = groceryList.indexOf(item)
-                            if (index >= 0) {
-                                groceryList[index] =
-                                    groceryList[index].copy(isBought = !item.isBought)
-                            }
+                        onToggle = {
+                            val updated = item.copy(isBought = !item.isBought)
+                            groceryList[groceryList.indexOf(item)] = updated
                         },
-                        onDelete = { groceryList.remove(item) },
+                        onDelete = {
+                            groceryList.remove(item)
+                        },
                         onEdit = {
                             navController.currentBackStackEntry
                                 ?.savedStateHandle
                                 ?.set("editItem", item)
+
                             navController.navigate("add")
                         }
                     )
@@ -159,63 +92,44 @@ fun HomeScreen(navController: NavController) {
 @Composable
 fun GroceryItemCard(
     item: GroceryItem,
-    onToggleBought: () -> Unit,
+    onToggle: () -> Unit,
     onDelete: () -> Unit,
     onEdit: () -> Unit
 ) {
-    Card(
+    Surface(
+        shape = MaterialTheme.shapes.medium,
+        tonalElevation = 2.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onEdit() },
-        elevation = CardDefaults.cardElevation(4.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (item.isBought)
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-            else
-                MaterialTheme.colorScheme.surface
-        )
+            .clickable { onEdit() }
     ) {
         Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onToggleBought) {
-                    Icon(
-                        imageVector = if (item.isBought)
-                            Icons.Filled.CheckBox
-                        else
-                            Icons.Filled.CheckBoxOutlineBlank,
-                        contentDescription = "Mark as bought",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
 
-                Spacer(modifier = Modifier.width(8.dp))
+            Checkbox(
+                checked = item.isBought,
+                onCheckedChange = { onToggle() },
+                colors = CheckboxDefaults.colors(
+                    checkedColor = MaterialTheme.colorScheme.primary
+                )
+            )
 
-                Column {
-                    Text(
-                        text = item.name,
-                        fontSize = 18.sp,
-                        fontWeight = if (item.isBought) FontWeight.Light else FontWeight.Medium
-                    )
-                    Text(
-                        text = "Qty: ${item.quantity} ${if (item.category.isNotEmpty()) " | ${item.category}" else ""}",
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                        fontSize = 14.sp
-                    )
-                }
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(text = item.name, fontSize = 18.sp)
+                Text(text = "Qty: ${item.quantity}", fontSize = 14.sp)
+                Text(
+                    text = item.category,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
 
-            IconButton(onClick = onDelete) {
-                Icon(
-                    imageVector = Icons.Filled.Delete,
-                    contentDescription = "Delete Item",
-                    tint = MaterialTheme.colorScheme.error
-                )
+            IconButton(onClick = { onDelete() }) {
+                Icon(Icons.Default.Delete, contentDescription = "Delete")
             }
         }
     }

@@ -6,12 +6,12 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.listify.GroceryItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -19,7 +19,6 @@ fun AddEditItemScreen(
     navController: NavController,
     existingItem: GroceryItem? = null
 ) {
-    // ✅ Pre-fill fields if editing
     var name by rememberSaveable { mutableStateOf(existingItem?.name ?: "") }
     var quantity by rememberSaveable { mutableStateOf(existingItem?.quantity?.toString() ?: "") }
     var category by rememberSaveable { mutableStateOf(existingItem?.category ?: "") }
@@ -29,40 +28,31 @@ fun AddEditItemScreen(
             TopAppBar(
                 title = {
                     Text(
-                        if (existingItem == null) "Add Grocery Item" else "Edit Grocery Item",
-                        fontWeight = FontWeight.Bold,
+                        if (existingItem == null) "Add Item" else "Edit Item",
                         fontSize = 20.sp
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                }
             )
         }
     ) { padding ->
+
         Column(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(padding)
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(20.dp)
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text("Item Name") },
-                singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -70,63 +60,43 @@ fun AddEditItemScreen(
                 value = quantity,
                 onValueChange = { quantity = it.filter { c -> c.isDigit() } },
                 label = { Text("Quantity") },
-                singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
 
             OutlinedTextField(
                 value = category,
                 onValueChange = { category = it },
-                label = { Text("Category (optional)") },
-                singleLine = true,
+                label = { Text("Category") },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            Row(
+            Button(
+                onClick = {
+                    if (name.isNotBlank() && quantity.isNotBlank()) {
+
+                        val newItem = GroceryItem(
+                            id = existingItem?.id ?: (0..999999).random(),
+                            name = name,
+                            quantity = quantity.toInt(),
+                            category = category,
+                            isBought = existingItem?.isBought ?: false
+                        )
+
+                        navController.previousBackStackEntry
+                            ?.savedStateHandle
+                            ?.set("item", newItem)
+
+                        navController.popBackStack()
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
             ) {
-                Button(
-                    onClick = { navController.popBackStack() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    )
-                ) {
-                    Text("Cancel")
-                }
-
-                Button(
-                    onClick = {
-                        if (name.isNotBlank() && quantity.isNotBlank()) {
-                            val newItem = GroceryItem(
-                                id = existingItem?.id ?: (0..999999).random(),
-                                name = name,
-                                quantity = quantity.toInt(),
-                                category = category,
-                                isBought = existingItem?.isBought ?: false
-                            )
-
-                            navController.previousBackStackEntry
-                                ?.savedStateHandle
-                                ?.set("item", newItem)
-
-                            // ✅ Clear the old edit item
-                            navController.previousBackStackEntry
-                                ?.savedStateHandle
-                                ?.remove<GroceryItem>("editItem")
-
-                            navController.popBackStack()
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Text("Save")
-                }
-
+                Text("Save", fontSize = 18.sp)
             }
         }
     }
