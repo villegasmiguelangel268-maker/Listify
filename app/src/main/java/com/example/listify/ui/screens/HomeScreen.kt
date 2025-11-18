@@ -1,5 +1,6 @@
 package com.example.listify.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,7 +16,6 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -24,19 +24,15 @@ import com.example.listify.GroceryItem
 import com.example.listify.GroceryViewModel
 import com.example.listify.ui.theme.ListifyGreen
 import com.example.listify.ui.theme.White
+import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
     navController: NavController,
     vm: GroceryViewModel = viewModel()
 ) {
-
     val groceryList = vm.items
 
-    var showDialog by remember { mutableStateOf(false) }
-    var itemToDelete by remember { mutableStateOf<GroceryItem?>(null) }
-
-    // 🔍 Search state
     var searchQuery by remember { mutableStateOf("") }
 
     val filteredList = groceryList.filter {
@@ -44,52 +40,30 @@ fun HomeScreen(
                 it.category.contains(searchQuery, ignoreCase = true)
     }
 
-    // ---- Observe returned ADD/EDIT item ----
-    val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
-
+    // Observe returned item from Add/Edit
+    val savedStateHandle = navController.currentBackStackEntry!!.savedStateHandle
     val returnedItem = savedStateHandle
-        ?.getLiveData<GroceryItem>("item")
-        ?.observeAsState()
-        ?.value
+        .getLiveData<GroceryItem>("item")
+        .observeAsState()
+        .value
 
     LaunchedEffect(returnedItem) {
         returnedItem?.let {
             vm.handleReturnedItem(it)
-            savedStateHandle?.remove<GroceryItem>("item")
+            savedStateHandle.remove<GroceryItem>("item")
         }
     }
 
-    // ---- Delete confirmation dialog ----
-    if (showDialog) {
-        AlertDialog(
-            onDismissRequest = { showDialog = false },
-            title = { Text("Delete Item") },
-            text = { Text("Are you sure you want to delete this item?") },
-            confirmButton = {
-                TextButton(onClick = {
-                    itemToDelete?.let { vm.delete(it) }
-                    showDialog = false
-                }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-
-                    // Clear edit state before adding
                     navController.getBackStackEntry("home")
                         .savedStateHandle["editItem"] = null
-
                     navController.navigate("add")
                 },
                 containerColor = ListifyGreen,
@@ -98,7 +72,6 @@ fun HomeScreen(
                 Icon(Icons.Default.Add, contentDescription = "Add Item")
             }
         }
-
     ) { padding ->
 
         Column(
@@ -107,7 +80,7 @@ fun HomeScreen(
                 .padding(padding)
         ) {
 
-            // 🌿 Header
+            // Header
             Surface(
                 color = ListifyGreen,
                 shadowElevation = 4.dp,
@@ -118,15 +91,14 @@ fun HomeScreen(
                 Text(
                     text = "Grocery List",
                     fontSize = 24.sp,
-                    fontWeight = FontWeight.SemiBold,
                     color = White,
                     modifier = Modifier.padding(20.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(Modifier.height(10.dp))
 
-            // 🔍 Search Bar
+            // Search bar
             Surface(
                 color = Color(0xFFF6F6F6),
                 shape = RoundedCornerShape(16.dp),
@@ -138,26 +110,19 @@ fun HomeScreen(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp)
-                        .fillMaxSize()
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
                 ) {
-
                     Icon(
-                        imageVector = Icons.Default.Search,
+                        Icons.Default.Search,
                         contentDescription = "Search",
                         tint = Color.Gray.copy(alpha = 0.7f),
                         modifier = Modifier.size(22.dp)
                     )
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
+                    Spacer(Modifier.width(12.dp))
                     TextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = {
-                            Text("Search items…", color = Color.Gray.copy(alpha = 0.6f))
-                        },
+                        placeholder = { Text("Search items…", color = Color.Gray) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         colors = TextFieldDefaults.colors(
@@ -171,9 +136,8 @@ fun HomeScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
-            // 📝 Items List
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 modifier = Modifier
@@ -182,25 +146,69 @@ fun HomeScreen(
             ) {
                 items(filteredList, key = { it.id }) { item ->
 
-                    GroceryItemCard(
-                        item = item,
-                        onToggle = {
-                            val updated = item.copy(isBought = !item.isBought)
-                            vm.update(updated)
-                        },
-                        onDeleteRequest = {
-                            itemToDelete = item
-                            showDialog = true
-                        },
-                        onEdit = {
+                    val dismissState = rememberSwipeToDismissBoxState()
 
-                            // ⭐ Save item TO HOME route, NOT edit route!
-                            navController.getBackStackEntry("home")
-                                .savedStateHandle["editItem"] = item
-
-                            navController.navigate("edit")
+                    // Handle delete WHEN swipe settles
+                    LaunchedEffect(dismissState.currentValue) {
+                        if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
+                            vm.deleteWithUndo(item)
+                            val result = snackbarHostState.showSnackbar(
+                                message = "Item deleted",
+                                actionLabel = "UNDO"
+                            )
+                            if (result == SnackbarResult.ActionPerformed) {
+                                vm.undoDelete()
+                            }
                         }
-                    )
+                    }
+
+                    SwipeToDismissBox(
+                        state = dismissState,
+                        enableDismissFromStartToEnd = false,
+                        backgroundContent = {
+
+                            val isSwipingLeft =
+                                dismissState.targetValue == SwipeToDismissBoxValue.EndToStart &&
+                                        dismissState.progress > 0f &&
+                                        dismissState.currentValue == SwipeToDismissBoxValue.Settled
+
+                            if (isSwipingLeft) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color(0xFFFF4444))
+                                        .padding(end = 24.dp),
+                                    contentAlignment = Alignment.CenterEnd
+                                ) {
+                                    Icon(Icons.Default.Delete, null, tint = White)
+                                }
+                            }
+                        }
+                    ) {
+                        GroceryItemCard(
+                            item = item,
+                            onToggle = {
+                                vm.update(item.copy(isBought = !item.isBought))
+                            },
+                            onDeleteRequest = {
+                                vm.deleteWithUndo(item)
+                                scope.launch {
+                                    val result = snackbarHostState.showSnackbar(
+                                        message = "Item deleted",
+                                        actionLabel = "UNDO"
+                                    )
+                                    if (result == SnackbarResult.ActionPerformed) {
+                                        vm.undoDelete()
+                                    }
+                                }
+                            },
+                            onEdit = {
+                                navController.getBackStackEntry("home")
+                                    .savedStateHandle["editItem"] = item
+                                navController.navigate("edit")
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -222,7 +230,6 @@ fun GroceryItemCard(
             .fillMaxWidth()
             .clickable { onEdit() }
     ) {
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -237,45 +244,19 @@ fun GroceryItemCard(
                     checkedColor = ListifyGreen,
                     uncheckedColor = ListifyGreen,
                     checkmarkColor = White
-                ),
-                modifier = Modifier.size(22.dp)
+                )
             )
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(Modifier.width(12.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
-
-                Text(
-                    text = item.name,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF333333)
-                )
-
-                Spacer(modifier = Modifier.height(2.dp))
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-
-                    if (item.category.isNotEmpty()) {
-                        Text(
-                            text = item.category,
-                            fontSize = 13.sp,
-                            color = ListifyGreen
-                        )
-
-                        Spacer(modifier = Modifier.width(10.dp))
-                    }
-
-                    Text(
-                        text = "Qty: ${item.quantity}",
-                        fontSize = 13.sp,
-                        color = Color.Gray
-                    )
-                }
+            Column(Modifier.weight(1f)) {
+                Text(item.name, fontSize = 17.sp)
+                Spacer(Modifier.height(2.dp))
+                Text("Qty: ${item.quantity}", fontSize = 13.sp, color = Color.Gray)
             }
 
             IconButton(
-                onClick = { onDeleteRequest() },
+                onClick = onDeleteRequest,
                 modifier = Modifier.size(38.dp)
             ) {
                 Icon(

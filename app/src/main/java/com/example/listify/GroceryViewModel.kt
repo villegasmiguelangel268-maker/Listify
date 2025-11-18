@@ -9,11 +9,13 @@ class GroceryViewModel(
     private val savedStateHandle: SavedStateHandle? = null
 ) : ViewModel() {
 
-    // Compose state list mirrors repo list
     private val _items = mutableStateListOf<GroceryItem>().apply {
         addAll(repo.items)
     }
     val items: List<GroceryItem> get() = _items
+
+    // Store last deleted item for undo
+    private var lastDeletedItem: GroceryItem? = null
 
     fun add(item: GroceryItem) {
         repo.add(item)
@@ -29,6 +31,20 @@ class GroceryViewModel(
     fun delete(item: GroceryItem) {
         repo.delete(item)
         _items.removeIf { it.id == item.id }
+    }
+
+    // Delete but SAVE item for possible undo
+    fun deleteWithUndo(item: GroceryItem) {
+        lastDeletedItem = item
+        delete(item)
+    }
+
+    // Add item back
+    fun undoDelete() {
+        lastDeletedItem?.let {
+            add(it)
+            lastDeletedItem = null
+        }
     }
 
     fun handleReturnedItem(item: GroceryItem) {
