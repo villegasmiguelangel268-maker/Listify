@@ -5,51 +5,63 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.listify.GroceryItem
+import com.example.listify.GroceryViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddItemScreen(navController: NavController) {
+fun AddItemScreen(
+    navController: NavController,
+    vm: GroceryViewModel = viewModel()
+) {
+    var name by rememberSaveable { mutableStateOf("") }
+    var category by rememberSaveable { mutableStateOf("") }
+    var quantity by rememberSaveable { mutableStateOf("1") }
 
-    var name by remember { mutableStateOf("") }
-    var quantity by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("") }
+    val colors = MaterialTheme.colorScheme
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add Item", fontSize = 20.sp) },
+                title = { Text("Add Item") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = colors.onSurface
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = colors.surface,
+                    titleContentColor = colors.onSurface
+                )
             )
         }
     ) { padding ->
 
         Column(
             modifier = Modifier
+                .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 20.dp)
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
+                .padding(20.dp)
         ) {
 
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Item Name") },
+                label = { Text("Item name") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             OutlinedTextField(
                 value = quantity,
@@ -59,30 +71,29 @@ fun AddItemScreen(navController: NavController) {
                 modifier = Modifier.fillMaxWidth()
             )
 
+            Spacer(modifier = Modifier.height(12.dp))
+
             OutlinedTextField(
                 value = category,
                 onValueChange = { category = it },
-                label = { Text("Category (Optional)") },
+                label = { Text("Category (optional)") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
 
+            Spacer(modifier = Modifier.height(20.dp))
+
             Button(
                 onClick = {
-                    if (name.isNotBlank() && quantity.isNotBlank()) {
-
+                    if (name.isNotBlank()) {
                         val newItem = GroceryItem(
-                            id = (0..999999).random(),
+                            id = (0..Int.MAX_VALUE).random(),
                             name = name.trim(),
-                            quantity = quantity.toInt(),
+                            quantity = quantity.toIntOrNull() ?: 1,
                             category = category.trim(),
                             isBought = false
                         )
-
-                        navController.previousBackStackEntry
-                            ?.savedStateHandle
-                            ?.set("item", newItem)
-
+                        vm.add(newItem)
                         navController.popBackStack()
                     }
                 },

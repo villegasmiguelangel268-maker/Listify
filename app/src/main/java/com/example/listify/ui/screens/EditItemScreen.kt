@@ -5,94 +5,101 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.listify.GroceryItem
+import com.example.listify.GroceryViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditItemScreen(
     navController: NavController,
-    existingItem: GroceryItem?
+    existingItem: GroceryItem?,
+    vm: GroceryViewModel = viewModel()
 ) {
-
-    if (existingItem == null) {
-        // If no item is provided, go back
-        navController.popBackStack()
-        return
+    // Initialize fields based on existing item
+    var name by rememberSaveable(existingItem?.id) { mutableStateOf(existingItem?.name ?: "") }
+    var category by rememberSaveable(existingItem?.id) { mutableStateOf(existingItem?.category ?: "") }
+    var quantity by rememberSaveable(existingItem?.id) {
+        mutableStateOf(existingItem?.quantity?.toString() ?: "1")
     }
 
-    var name by remember { mutableStateOf(existingItem.name) }
-    var quantity by remember { mutableStateOf(existingItem.quantity.toString()) }
-    var category by remember { mutableStateOf(existingItem.category) }
+    val colors = MaterialTheme.colorScheme
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Edit Item", fontSize = 20.sp) },
+                title = { Text("Edit Item") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = colors.onSurface
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = colors.surface,
+                    titleContentColor = colors.onSurface
+                )
             )
         }
     ) { padding ->
 
         Column(
             modifier = Modifier
+                .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 20.dp)
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
+                .padding(20.dp)
         ) {
 
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Item Name") },
-                singleLine = true,
+                label = { Text("Item name") },
                 modifier = Modifier.fillMaxWidth()
             )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             OutlinedTextField(
                 value = quantity,
                 onValueChange = { quantity = it.filter(Char::isDigit) },
                 label = { Text("Quantity") },
-                singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             OutlinedTextField(
                 value = category,
                 onValueChange = { category = it },
-                label = { Text("Category (Optional)") },
-                singleLine = true,
+                label = { Text("Category (optional)") },
                 modifier = Modifier.fillMaxWidth()
             )
 
+            Spacer(modifier = Modifier.height(20.dp))
+
             Button(
                 onClick = {
-                    val updatedItem = existingItem.copy(
+                    val updated = existingItem?.copy(
                         name = name.trim(),
-                        quantity = quantity.toInt(),
-                        category = category.trim()
+                        category = category.trim(),
+                        quantity = quantity.toIntOrNull() ?: existingItem.quantity
                     )
 
-                    navController.previousBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("item", updatedItem)
-
-                    navController.popBackStack()
+                    if (updated != null) {
+                        vm.update(updated)
+                        navController.popBackStack()
+                    }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Save Changes")
+                Text("Save changes")
             }
         }
     }

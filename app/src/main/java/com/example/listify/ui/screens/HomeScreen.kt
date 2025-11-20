@@ -15,23 +15,22 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.listify.GroceryItem
 import com.example.listify.GroceryViewModel
-import com.example.listify.ui.theme.ListifyGreen
-import com.example.listify.ui.theme.White
 import kotlinx.coroutines.launch
 
+@Suppress("CoroutineCreationDuringComposition")
 @Composable
 fun HomeScreen(
     navController: NavController,
     vm: GroceryViewModel = viewModel()
 ) {
     val groceryList = vm.items
+    val colorScheme = MaterialTheme.colorScheme
 
     var searchQuery by remember { mutableStateOf("") }
 
@@ -40,7 +39,6 @@ fun HomeScreen(
                 it.category.contains(searchQuery, ignoreCase = true)
     }
 
-    // Observe returned item from Add/Edit
     val savedStateHandle = navController.currentBackStackEntry!!.savedStateHandle
     val returnedItem = savedStateHandle
         .getLiveData<GroceryItem>("item")
@@ -66,11 +64,9 @@ fun HomeScreen(
                         .savedStateHandle["editItem"] = null
                     navController.navigate("add")
                 },
-                containerColor = ListifyGreen,
-                contentColor = White
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Item")
-            }
+                containerColor = colorScheme.primary,
+                contentColor = colorScheme.onPrimary
+            ) { Icon(Icons.Default.Add, contentDescription = "Add Item") }
         }
     ) { padding ->
 
@@ -78,29 +74,29 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .background(colorScheme.background)
         ) {
-
-            // Header
+            // HEADER
             Surface(
-                color = ListifyGreen,
+                color = colorScheme.primary,
                 shadowElevation = 4.dp,
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
             ) {
                 Text(
-                    text = "Grocery List",
+                    "Grocery List",
                     fontSize = 24.sp,
-                    color = White,
+                    color = colorScheme.onPrimary,
                     modifier = Modifier.padding(20.dp)
                 )
             }
 
             Spacer(Modifier.height(10.dp))
 
-            // Search bar
+            // SEARCH BAR
             Surface(
-                color = Color(0xFFF6F6F6),
+                color = colorScheme.surface,
                 shape = RoundedCornerShape(16.dp),
                 tonalElevation = 2.dp,
                 modifier = Modifier
@@ -110,27 +106,34 @@ fun HomeScreen(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .fillMaxSize()
                 ) {
                     Icon(
                         Icons.Default.Search,
                         contentDescription = "Search",
-                        tint = Color.Gray.copy(alpha = 0.7f),
-                        modifier = Modifier.size(22.dp)
+                        tint = colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                     Spacer(Modifier.width(12.dp))
+
                     TextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = { Text("Search items…", color = Color.Gray) },
+                        placeholder = {
+                            Text(
+                                "Search items…",
+                                color = colorScheme.onSurface.copy(alpha = 0.4f)
+                            )
+                        },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         colors = TextFieldDefaults.colors(
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                            focusedIndicatorColor = Color.Transparent,
-                            cursorColor = ListifyGreen
+                            unfocusedContainerColor = colorScheme.surface,
+                            focusedContainerColor = colorScheme.surface,
+                            unfocusedIndicatorColor = colorScheme.surface,
+                            focusedIndicatorColor = colorScheme.surface,
+                            cursorColor = colorScheme.primary
                         )
                     )
                 }
@@ -138,6 +141,7 @@ fun HomeScreen(
 
             Spacer(Modifier.height(16.dp))
 
+            // LIST
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 modifier = Modifier
@@ -148,13 +152,11 @@ fun HomeScreen(
 
                     val dismissState = rememberSwipeToDismissBoxState()
 
-                    // Handle delete WHEN swipe settles
-                    LaunchedEffect(dismissState.currentValue) {
-                        if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
-                            vm.deleteWithUndo(item)
+                    if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
+                        vm.deleteWithUndo(item)
+                        scope.launch {
                             val result = snackbarHostState.showSnackbar(
-                                message = "Item deleted",
-                                actionLabel = "UNDO"
+                                "Item deleted", "UNDO"
                             )
                             if (result == SnackbarResult.ActionPerformed) {
                                 vm.undoDelete()
@@ -166,21 +168,19 @@ fun HomeScreen(
                         state = dismissState,
                         enableDismissFromStartToEnd = false,
                         backgroundContent = {
-
-                            val isSwipingLeft =
-                                dismissState.targetValue == SwipeToDismissBoxValue.EndToStart &&
-                                        dismissState.progress > 0f &&
-                                        dismissState.currentValue == SwipeToDismissBoxValue.Settled
-
-                            if (isSwipingLeft) {
+                            if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(Color(0xFFFF4444))
+                                        .background(colorScheme.error)
                                         .padding(end = 24.dp),
                                     contentAlignment = Alignment.CenterEnd
                                 ) {
-                                    Icon(Icons.Default.Delete, null, tint = White)
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = "Delete",
+                                        tint = colorScheme.onError
+                                    )
                                 }
                             }
                         }
@@ -194,8 +194,7 @@ fun HomeScreen(
                                 vm.deleteWithUndo(item)
                                 scope.launch {
                                     val result = snackbarHostState.showSnackbar(
-                                        message = "Item deleted",
-                                        actionLabel = "UNDO"
+                                        "Item deleted", "UNDO"
                                     )
                                     if (result == SnackbarResult.ActionPerformed) {
                                         vm.undoDelete()
@@ -215,6 +214,7 @@ fun HomeScreen(
     }
 }
 
+
 @Composable
 fun GroceryItemCard(
     item: GroceryItem,
@@ -222,14 +222,17 @@ fun GroceryItemCard(
     onDeleteRequest: () -> Unit,
     onEdit: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Surface(
-        color = White,
+        color = colorScheme.surface,
         shape = RoundedCornerShape(16.dp),
         shadowElevation = 6.dp,
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onEdit() }
     ) {
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -241,28 +244,36 @@ fun GroceryItemCard(
                 checked = item.isBought,
                 onCheckedChange = { onToggle() },
                 colors = CheckboxDefaults.colors(
-                    checkedColor = ListifyGreen,
-                    uncheckedColor = ListifyGreen,
-                    checkmarkColor = White
+                    checkedColor = colorScheme.primary,
+                    uncheckedColor = colorScheme.primary,
+                    checkmarkColor = colorScheme.onPrimary
                 )
             )
 
-            Spacer(Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
-            Column(Modifier.weight(1f)) {
-                Text(item.name, fontSize = 17.sp)
-                Spacer(Modifier.height(2.dp))
-                Text("Qty: ${item.quantity}", fontSize = 13.sp, color = Color.Gray)
+            Column(modifier = Modifier.weight(1f)) {
+
+                Text(
+                    text = item.name,
+                    fontSize = 17.sp,
+                    color = colorScheme.onSurface
+                )
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                Text(
+                    text = "Qty: ${item.quantity}",
+                    fontSize = 13.sp,
+                    color = colorScheme.onSurface.copy(alpha = 0.7f)
+                )
             }
 
-            IconButton(
-                onClick = onDeleteRequest,
-                modifier = Modifier.size(38.dp)
-            ) {
+            IconButton(onClick = onDeleteRequest) {
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = "Delete",
-                    tint = MaterialTheme.colorScheme.error
+                    tint = colorScheme.error
                 )
             }
         }

@@ -1,12 +1,10 @@
 package com.example.listify
 
 import androidx.compose.runtime.mutableStateListOf
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 
 class GroceryViewModel(
-    private val repo: GroceryRepository = InMemoryGroceryRepository(),
-    private val savedStateHandle: SavedStateHandle? = null
+    private val repo: GroceryRepository = InMemoryGroceryRepository()
 ) : ViewModel() {
 
     private val _items = mutableStateListOf<GroceryItem>().apply {
@@ -14,7 +12,7 @@ class GroceryViewModel(
     }
     val items: List<GroceryItem> get() = _items
 
-    // Store last deleted item for undo
+    // For undo delete
     private var lastDeletedItem: GroceryItem? = null
 
     fun add(item: GroceryItem) {
@@ -33,13 +31,11 @@ class GroceryViewModel(
         _items.removeIf { it.id == item.id }
     }
 
-    // Delete but SAVE item for possible undo
     fun deleteWithUndo(item: GroceryItem) {
         lastDeletedItem = item
         delete(item)
     }
 
-    // Add item back
     fun undoDelete() {
         lastDeletedItem?.let {
             add(it)

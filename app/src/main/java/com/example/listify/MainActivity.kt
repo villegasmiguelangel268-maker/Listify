@@ -15,13 +15,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // ⭐ Enable fullscreen edge-to-edge layout
+        // Enable edge-to-edge
         WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
 
         setContent {
-            ListifyTheme {
-                Surface(color = MaterialTheme.colorScheme.background) {
+            ListifyTheme {   // 🌙 Auto-detects light/dark mode
+                Surface(
+                    color = MaterialTheme.colorScheme.background
+                ) {
                     val navController = rememberNavController()
                     AppNavGraph(navController)
                 }
