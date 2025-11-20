@@ -9,6 +9,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.listify.CATEGORY_LIST
 import com.example.listify.GroceryItem
 import com.example.listify.GroceryViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -20,8 +21,12 @@ fun AddItemScreen(
     vm: GroceryViewModel = viewModel()
 ) {
     var name by rememberSaveable { mutableStateOf("") }
-    var category by rememberSaveable { mutableStateOf("") }
     var quantity by rememberSaveable { mutableStateOf("1") }
+
+    // Dropdown state
+    var selectedCategory by rememberSaveable { mutableStateOf("") }
+    var customCategory by rememberSaveable { mutableStateOf("") }
+    var expanded by remember { mutableStateOf(false) }
 
     val colors = MaterialTheme.colorScheme
 
@@ -37,17 +42,13 @@ fun AddItemScreen(
                             tint = colors.onSurface
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = colors.surface,
-                    titleContentColor = colors.onSurface
-                )
+                }
             )
         }
     ) { padding ->
 
         Column(
-            modifier = Modifier
+            Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .padding(20.dp)
@@ -57,42 +58,73 @@ fun AddItemScreen(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text("Item name") },
-                singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
 
             OutlinedTextField(
                 value = quantity,
                 onValueChange = { quantity = it.filter(Char::isDigit) },
                 label = { Text("Quantity") },
-                singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
 
-            OutlinedTextField(
-                value = category,
-                onValueChange = { category = it },
-                label = { Text("Category (optional)") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+            // CATEGORY DROPDOWN
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded }
+            ) {
 
-            Spacer(modifier = Modifier.height(20.dp))
+                OutlinedTextField(
+                    value = if (selectedCategory == "Others") customCategory else selectedCategory,
+                    onValueChange = {
+                        if (selectedCategory == "Others") customCategory = it
+                    },
+                    readOnly = selectedCategory != "Others",
+                    label = { Text("Category") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth()
+                )
+
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    CATEGORY_LIST.forEach { cat ->
+                        DropdownMenuItem(
+                            text = { Text(cat) },
+                            onClick = {
+                                selectedCategory = cat
+                                if (cat != "Others") customCategory = ""
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
 
             Button(
                 onClick = {
                     if (name.isNotBlank()) {
+                        val finalCategory =
+                            if (selectedCategory == "Others") customCategory.trim()
+                            else selectedCategory
+
                         val newItem = GroceryItem(
                             id = (0..Int.MAX_VALUE).random(),
                             name = name.trim(),
                             quantity = quantity.toIntOrNull() ?: 1,
-                            category = category.trim(),
+                            category = finalCategory,
                             isBought = false
                         )
+
                         vm.add(newItem)
                         navController.popBackStack()
                     }

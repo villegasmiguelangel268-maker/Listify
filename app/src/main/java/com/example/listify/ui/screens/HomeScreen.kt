@@ -22,6 +22,7 @@ import androidx.navigation.NavController
 import com.example.listify.GroceryItem
 import com.example.listify.GroceryViewModel
 import kotlinx.coroutines.launch
+import com.example.listify.CATEGORY_UI_MAP
 
 @Suppress("CoroutineCreationDuringComposition")
 @Composable
@@ -152,8 +153,13 @@ fun HomeScreen(
 
                     val dismissState = rememberSwipeToDismissBoxState()
 
-                    if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
+                    // Trigger delete ONLY when swipe is fully committed
+                    if (
+                        dismissState.targetValue == SwipeToDismissBoxValue.EndToStart &&
+                        dismissState.currentValue != SwipeToDismissBoxValue.EndToStart
+                    ) {
                         vm.deleteWithUndo(item)
+
                         scope.launch {
                             val result = snackbarHostState.showSnackbar(
                                 "Item deleted", "UNDO"
@@ -163,6 +169,7 @@ fun HomeScreen(
                             }
                         }
                     }
+
 
                     SwipeToDismissBox(
                         state = dismissState,
@@ -214,7 +221,6 @@ fun HomeScreen(
     }
 }
 
-
 @Composable
 fun GroceryItemCard(
     item: GroceryItem,
@@ -223,6 +229,9 @@ fun GroceryItemCard(
     onEdit: () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
+
+    val categoryUI = CATEGORY_UI_MAP[item.category]
+        ?: CATEGORY_UI_MAP["Others"]!!
 
     Surface(
         color = colorScheme.surface,
@@ -250,7 +259,7 @@ fun GroceryItemCard(
                 )
             )
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
 
@@ -260,7 +269,36 @@ fun GroceryItemCard(
                     color = colorScheme.onSurface
                 )
 
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(Modifier.height(4.dp))
+
+                // CATEGORY CHIP (color + icon)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .padding(top = 2.dp)
+                        .background(
+                            color = categoryUI.color.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Icon(
+                        categoryUI.icon,
+                        contentDescription = item.category,
+                        tint = categoryUI.color,
+                        modifier = Modifier.size(16.dp)
+                    )
+
+                    Spacer(Modifier.width(6.dp))
+
+                    Text(
+                        text = item.category,
+                        color = categoryUI.color,
+                        fontSize = 12.sp
+                    )
+                }
+
+                Spacer(Modifier.height(2.dp))
 
                 Text(
                     text = "Qty: ${item.quantity}",

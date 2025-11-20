@@ -9,6 +9,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.listify.CATEGORY_LIST
 import com.example.listify.GroceryItem
 import com.example.listify.GroceryViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -20,12 +21,24 @@ fun EditItemScreen(
     existingItem: GroceryItem?,
     vm: GroceryViewModel = viewModel()
 ) {
-    // Initialize fields based on existing item
     var name by rememberSaveable(existingItem?.id) { mutableStateOf(existingItem?.name ?: "") }
-    var category by rememberSaveable(existingItem?.id) { mutableStateOf(existingItem?.category ?: "") }
     var quantity by rememberSaveable(existingItem?.id) {
         mutableStateOf(existingItem?.quantity?.toString() ?: "1")
     }
+
+    // Dropdown state
+    var selectedCategory by rememberSaveable(existingItem?.id) {
+        mutableStateOf(
+            if (existingItem?.category in CATEGORY_LIST) existingItem?.category ?: ""
+            else "Others"
+        )
+    }
+    var customCategory by rememberSaveable(existingItem?.id) {
+        mutableStateOf(
+            if (existingItem?.category !in CATEGORY_LIST) existingItem?.category ?: "" else ""
+        )
+    }
+    var expanded by remember { mutableStateOf(false) }
 
     val colors = MaterialTheme.colorScheme
 
@@ -41,17 +54,13 @@ fun EditItemScreen(
                             tint = colors.onSurface
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = colors.surface,
-                    titleContentColor = colors.onSurface
-                )
+                }
             )
         }
     ) { padding ->
 
         Column(
-            modifier = Modifier
+            Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .padding(20.dp)
@@ -64,7 +73,7 @@ fun EditItemScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
 
             OutlinedTextField(
                 value = quantity,
@@ -73,22 +82,55 @@ fun EditItemScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
 
-            OutlinedTextField(
-                value = category,
-                onValueChange = { category = it },
-                label = { Text("Category (optional)") },
-                modifier = Modifier.fillMaxWidth()
-            )
+            // CATEGORY DROPDOWN
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded }
+            ) {
 
-            Spacer(modifier = Modifier.height(20.dp))
+                OutlinedTextField(
+                    value = if (selectedCategory == "Others") customCategory else selectedCategory,
+                    onValueChange = {
+                        if (selectedCategory == "Others") customCategory = it
+                    },
+                    readOnly = selectedCategory != "Others",
+                    label = { Text("Category") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth()
+                )
+
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    CATEGORY_LIST.forEach { cat ->
+                        DropdownMenuItem(
+                            text = { Text(cat) },
+                            onClick = {
+                                selectedCategory = cat
+                                if (cat != "Others") customCategory = ""
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
 
             Button(
                 onClick = {
+                    val finalCategory =
+                        if (selectedCategory == "Others") customCategory.trim()
+                        else selectedCategory
+
                     val updated = existingItem?.copy(
                         name = name.trim(),
-                        category = category.trim(),
+                        category = finalCategory,
                         quantity = quantity.toIntOrNull() ?: existingItem.quantity
                     )
 
