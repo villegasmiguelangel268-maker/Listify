@@ -45,11 +45,18 @@ fun AppNavGraph(navController: NavHostController) {
             val existingItem =
                 parentEntry.savedStateHandle.get<GroceryItem>("editItem")
 
+            // ✅ If item is null, go back instead of crashing
+            if (existingItem == null) {
+                navController.popBackStack()
+                return@composable
+            }
+
             EditItemScreen(
                 navController = navController,
-                existingItem = existingItem,
+                existingItem = existingItem,   // now guaranteed non-null
                 vm = sharedViewModel
             )
         }
+
     }
 }

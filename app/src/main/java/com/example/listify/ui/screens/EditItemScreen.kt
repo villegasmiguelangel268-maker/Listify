@@ -3,9 +3,12 @@ package com.example.listify.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -18,28 +21,26 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 @Composable
 fun EditItemScreen(
     navController: NavController,
-    existingItem: GroceryItem?,
+    existingItem: GroceryItem,   // ✅ NO LONGER NULLABLE
     vm: GroceryViewModel = viewModel()
 ) {
-    var name by rememberSaveable(existingItem?.id) { mutableStateOf(existingItem?.name ?: "") }
-    var quantity by rememberSaveable(existingItem?.id) {
-        mutableStateOf(existingItem?.quantity?.toString() ?: "1")
+    var name by rememberSaveable(existingItem.id) { mutableStateOf(existingItem.name) }
+    var quantity by rememberSaveable(existingItem.id) { mutableStateOf(existingItem.quantity.toString()) }
+
+    // ⭐ Category selection logic
+    var selectedCategory by rememberSaveable(existingItem.id) {
+        mutableStateOf(
+            if (existingItem.category in CATEGORY_LIST) existingItem.category else "Others"
+        )
     }
 
-    // Dropdown state
-    var selectedCategory by rememberSaveable(existingItem?.id) {
+    var customCategory by rememberSaveable(existingItem.id) {
         mutableStateOf(
-            if (existingItem?.category in CATEGORY_LIST) existingItem?.category ?: ""
-            else "Others"
+            if (existingItem.category !in CATEGORY_LIST) existingItem.category else ""
         )
     }
-    var customCategory by rememberSaveable(existingItem?.id) {
-        mutableStateOf(
-            if (existingItem?.category !in CATEGORY_LIST) existingItem?.category ?: "" else ""
-        )
-    }
+
     var expanded by remember { mutableStateOf(false) }
-
     val colors = MaterialTheme.colorScheme
 
     Scaffold(
@@ -75,16 +76,37 @@ fun EditItemScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            OutlinedTextField(
-                value = quantity,
-                onValueChange = { quantity = it.filter(Char::isDigit) },
-                label = { Text("Quantity") },
+            // ⭐ Quantity Stepper
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
-            )
+            ) {
+
+                IconButton(onClick = {
+                    val q = quantity.toIntOrNull() ?: 1
+                    if (q > 1) quantity = (q - 1).toString()
+                }) {
+                    Icon(Icons.Default.Remove, "Decrease")
+                }
+
+                OutlinedTextField(
+                    value = quantity,
+                    onValueChange = { quantity = it.filter(Char::isDigit) },
+                    singleLine = true,
+                    modifier = Modifier.width(80.dp)
+                )
+
+                IconButton(onClick = {
+                    val q = quantity.toIntOrNull() ?: 1
+                    quantity = (q + 1).toString()
+                }) {
+                    Icon(Icons.Default.Add, "Increase")
+                }
+            }
 
             Spacer(Modifier.height(12.dp))
 
-            // CATEGORY DROPDOWN
+            // ⭐ Category Dropdown
             ExposedDropdownMenuBox(
                 expanded = expanded,
                 onExpandedChange = { expanded = !expanded }
@@ -92,14 +114,12 @@ fun EditItemScreen(
 
                 OutlinedTextField(
                     value = if (selectedCategory == "Others") customCategory else selectedCategory,
-                    onValueChange = {
-                        if (selectedCategory == "Others") customCategory = it
-                    },
+                    onValueChange = { if (selectedCategory == "Others") customCategory = it },
                     readOnly = selectedCategory != "Others",
                     label = { Text("Category") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
                     modifier = Modifier
-                        .menuAnchor()
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         .fillMaxWidth()
                 )
 
@@ -128,21 +148,17 @@ fun EditItemScreen(
                         if (selectedCategory == "Others") customCategory.trim()
                         else selectedCategory
 
-                    val updated = existingItem?.copy(
+                    val updated = existingItem.copy(
                         name = name.trim(),
-                        category = finalCategory,
-                        quantity = quantity.toIntOrNull() ?: existingItem.quantity
+                        quantity = quantity.toIntOrNull() ?: existingItem.quantity,
+                        category = finalCategory
                     )
 
-                    if (updated != null) {
-                        vm.update(updated)
-                        navController.popBackStack()
-                    }
+                    vm.update(updated)
+                    navController.popBackStack()
                 },
                 modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Save changes")
-            }
+            ) { Text("Save changes") }
         }
     }
 }

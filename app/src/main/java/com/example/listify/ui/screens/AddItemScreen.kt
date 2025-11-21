@@ -4,9 +4,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.listify.CATEGORY_LIST
@@ -23,7 +26,7 @@ fun AddItemScreen(
     var name by rememberSaveable { mutableStateOf("") }
     var quantity by rememberSaveable { mutableStateOf("1") }
 
-    // Dropdown state
+    // Category dropdown state
     var selectedCategory by rememberSaveable { mutableStateOf("") }
     var customCategory by rememberSaveable { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
@@ -63,16 +66,36 @@ fun AddItemScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            OutlinedTextField(
-                value = quantity,
-                onValueChange = { quantity = it.filter(Char::isDigit) },
-                label = { Text("Quantity") },
+            // ⭐ Quantity Stepper
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
-            )
+            ) {
+                IconButton(onClick = {
+                    val q = quantity.toIntOrNull() ?: 1
+                    if (q > 1) quantity = (q - 1).toString()
+                }) {
+                    Icon(Icons.Default.Remove, "Decrease")
+                }
+
+                OutlinedTextField(
+                    value = quantity,
+                    onValueChange = { quantity = it.filter(Char::isDigit) },
+                    singleLine = true,
+                    modifier = Modifier.width(80.dp)
+                )
+
+                IconButton(onClick = {
+                    val q = quantity.toIntOrNull() ?: 1
+                    quantity = (q + 1).toString()
+                }) {
+                    Icon(Icons.Default.Add, "Increase")
+                }
+            }
 
             Spacer(Modifier.height(12.dp))
 
-            // CATEGORY DROPDOWN
+            // ⭐ Category Dropdown
             ExposedDropdownMenuBox(
                 expanded = expanded,
                 onExpandedChange = { expanded = !expanded }
@@ -80,14 +103,15 @@ fun AddItemScreen(
 
                 OutlinedTextField(
                     value = if (selectedCategory == "Others") customCategory else selectedCategory,
-                    onValueChange = {
-                        if (selectedCategory == "Others") customCategory = it
-                    },
+                    onValueChange = { if (selectedCategory == "Others") customCategory = it },
                     readOnly = selectedCategory != "Others",
                     label = { Text("Category") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
                     modifier = Modifier
-                        .menuAnchor()
+                        .menuAnchor(
+                            type = MenuAnchorType.PrimaryNotEditable,
+                            enabled = true
+                        )
                         .fillMaxWidth()
                 )
 
@@ -113,6 +137,7 @@ fun AddItemScreen(
             Button(
                 onClick = {
                     if (name.isNotBlank()) {
+
                         val finalCategory =
                             if (selectedCategory == "Others") customCategory.trim()
                             else selectedCategory
