@@ -9,6 +9,7 @@ import com.example.listify.GroceryViewModel
 import com.example.listify.ui.screens.AddItemScreen
 import com.example.listify.ui.screens.EditItemScreen
 import com.example.listify.ui.screens.HomeScreen
+import com.example.listify.ui.screens.ListsScreen
 import com.example.listify.ui.screens.SplashScreen
 
 @Composable
@@ -28,6 +29,10 @@ fun AppNavGraph(navController: NavHostController) {
 
         composable("home") {
             HomeScreen(navController, vm = sharedViewModel)
+        }
+
+        composable("lists") {
+            ListsScreen(navController, vm = sharedViewModel)
         }
 
         composable("add") {

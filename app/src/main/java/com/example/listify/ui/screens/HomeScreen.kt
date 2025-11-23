@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -145,7 +146,7 @@ fun HomeScreen(
                     }
             ) {
 
-                // Modern Header
+                // Modern Header with List Selector
                 Surface(
                     color = colorScheme.primary,
                     shadowElevation = 0.dp,
@@ -153,24 +154,65 @@ fun HomeScreen(
                         .fillMaxWidth()
                         .statusBarsPadding()
                 ) {
-                    Column(
-                        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 24.dp)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 24.dp, end = 16.dp, top = 20.dp, bottom = 24.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            "Grocery List",
-                            color = colorScheme.onPrimary,
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clickable {
+                                    navController.navigate("lists")
+                                }
+                            ) {
+                                val currentList = vm.getCurrentList()
+                                Text(
+                                    currentList?.icon ?: "🛒",
+                                    fontSize = 28.sp
+                                )
 
-                        Spacer(Modifier.height(4.dp))
+                                Spacer(Modifier.width(12.dp))
 
-                        Text(
-                            "${unboughtItems.size} items to buy",
-                            color = colorScheme.onPrimary.copy(alpha = 0.8f),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium
-                        )
+                                Column {
+                                    Text(
+                                        currentList?.name ?: "Grocery List",
+                                        color = colorScheme.onPrimary,
+                                        fontSize = 24.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+
+                                    Text(
+                                        "Tap to switch lists",
+                                        color = colorScheme.onPrimary.copy(alpha = 0.7f),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+
+                            Spacer(Modifier.height(8.dp))
+
+                            Text(
+                                "${unboughtItems.size} items to buy",
+                                color = colorScheme.onPrimary.copy(alpha = 0.8f),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        IconButton(
+                            onClick = { navController.navigate("lists") }
+                        ) {
+                            Icon(
+                                Icons.Default.Menu,
+                                contentDescription = "View Lists",
+                                tint = colorScheme.onPrimary,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
                     }
                 }
 

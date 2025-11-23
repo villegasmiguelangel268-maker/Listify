@@ -2,11 +2,12 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    kotlin("plugin.parcelize")  // ← ADD THIS LINE (not id("kotlin-parcelize"))
 }
 
 android {
     namespace = "com.example.listify"
-    compileSdk = 35  // Changed from 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.listify"

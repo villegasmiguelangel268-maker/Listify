@@ -6,8 +6,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,11 +16,8 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -45,18 +40,27 @@ fun EditItemScreen(
     navController: NavController,
     vm: GroceryViewModel = viewModel()
 ) {
-    val editItem = navController.currentBackStackEntry
+    // Get the item from savedStateHandle
+    val editItem = navController.previousBackStackEntry
         ?.savedStateHandle
         ?.get<GroceryItem>("editItem")
 
-    var name by rememberSaveable { mutableStateOf(editItem?.name ?: "") }
-    var quantity by rememberSaveable { mutableStateOf(editItem?.quantity?.toString() ?: "1") }
-    var selectedCategory by rememberSaveable { mutableStateOf(editItem?.category ?: "") }
-    var customCategory by rememberSaveable { mutableStateOf("") }
+    // Initialize state with editItem values
+    var name by remember { mutableStateOf(editItem?.name ?: "") }
+    var quantity by remember { mutableStateOf(editItem?.quantity?.toString() ?: "1") }
+    var selectedCategory by remember { mutableStateOf(editItem?.category ?: "") }
+    var customCategory by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
 
     val colors = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
+
+    // If editItem is null, navigate back
+    LaunchedEffect(editItem) {
+        if (editItem == null) {
+            navController.popBackStack()
+        }
+    }
 
     fun startRepeating(action: () -> Unit, stopFlag: MutableState<Boolean>) {
         scope.launch {
