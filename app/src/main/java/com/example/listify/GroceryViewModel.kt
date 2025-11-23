@@ -2,6 +2,11 @@ package com.example.listify
 
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 class GroceryViewModel(
     private val repo: GroceryRepository = InMemoryGroceryRepository()
@@ -12,7 +17,11 @@ class GroceryViewModel(
     }
     val items: List<GroceryItem> get() = _items
 
-    // For undo delete
+    // ⭐ REQUIRED FOR SwipeRefresh
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> get() = _isRefreshing
+
+    // Store last deleted item for UNDO action
     private var lastDeletedItem: GroceryItem? = null
 
     fun add(item: GroceryItem) {
@@ -46,5 +55,19 @@ class GroceryViewModel(
     fun handleReturnedItem(item: GroceryItem) {
         val index = _items.indexOfFirst { it.id == item.id }
         if (index == -1) add(item) else update(item)
+    }
+
+    /** ⭐ Pull-to-refresh handler */
+    fun refresh() {
+        viewModelScope.launch {
+            _isRefreshing.value = true
+
+            delay(800) // simulate loading from database or network
+
+            _items.clear()
+            _items.addAll(repo.items)
+
+            _isRefreshing.value = false
+        }
     }
 }

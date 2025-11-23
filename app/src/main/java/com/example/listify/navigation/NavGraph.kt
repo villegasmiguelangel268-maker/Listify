@@ -1,12 +1,10 @@
 package com.example.listify.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.example.listify.GroceryItem
 import com.example.listify.GroceryViewModel
 import com.example.listify.ui.screens.AddItemScreen
 import com.example.listify.ui.screens.EditItemScreen
@@ -36,27 +34,11 @@ fun AppNavGraph(navController: NavHostController) {
             AddItemScreen(navController, vm = sharedViewModel)
         }
 
-        composable("edit") { backStackEntry ->
-
-            val parentEntry = remember(backStackEntry) {
-                navController.getBackStackEntry("home")
-            }
-
-            val existingItem =
-                parentEntry.savedStateHandle.get<GroceryItem>("editItem")
-
-            // ✅ If item is null, go back instead of crashing
-            if (existingItem == null) {
-                navController.popBackStack()
-                return@composable
-            }
-
+        composable("edit") {
             EditItemScreen(
                 navController = navController,
-                existingItem = existingItem,   // now guaranteed non-null
                 vm = sharedViewModel
             )
         }
-
     }
 }
