@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -107,6 +109,8 @@ fun ListsScreen(
                     list = list,
                     isActive = list.id == currentListId,
                     itemCount = vm.getListItemCount(list.id),
+                    totalCost = vm.getTotalCost(list.id),
+                    budgetStatus = vm.getBudgetStatus(list.id),
                     onClick = {
                         vm.switchList(list.id)
                         navController.popBackStack()
@@ -130,13 +134,15 @@ fun ListsScreen(
             initialName = "",
             initialIcon = ListIcons.categories.first().icons.first(),
             initialColor = ListColors.colors.first().first,
+            initialBudget = 0.0,
             onDismiss = { showCreateDialog = false },
-            onSave = { name, icon, color ->
+            onSave = { name, icon, color, budget ->
                 val newList = ShoppingList(
                     id = (vm.lists.maxOfOrNull { it.id } ?: 0) + 1,
                     name = name,
                     icon = icon,
-                    colorHex = color
+                    colorHex = color,
+                    budget = budget
                 )
                 vm.addList(newList)
                 showCreateDialog = false
@@ -151,12 +157,14 @@ fun ListsScreen(
             initialName = list.name,
             initialIcon = list.icon,
             initialColor = list.colorHex,
+            initialBudget = list.budget,
             onDismiss = { showEditDialog = null },
-            onSave = { name, icon, color ->
+            onSave = { name, icon, color, budget ->
                 val updatedList = list.copy(
                     name = name,
                     icon = icon,
-                    colorHex = color
+                    colorHex = color,
+                    budget = budget
                 )
                 vm.updateList(updatedList)
                 showEditDialog = null
@@ -206,6 +214,8 @@ fun ListCard(
     list: ShoppingList,
     isActive: Boolean,
     itemCount: Int,
+    totalCost: Double,
+    budgetStatus: BudgetStatus,
     onClick: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
@@ -229,89 +239,149 @@ fun ListCard(
                 } else Modifier
             )
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(20.dp)
         ) {
-            // Icon with colored background
-            Surface(
-                color = list.getColor().copy(alpha = 0.2f),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.size(64.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                // Icon with colored background
+                Surface(
+                    color = list.getColor().copy(alpha = 0.2f),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.size(64.dp)
                 ) {
-                    Text(
-                        list.icon,
-                        fontSize = 32.sp
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            list.icon,
+                            fontSize = 32.sp
+                        )
+                    }
                 }
-            }
 
-            Spacer(Modifier.width(16.dp))
+                Spacer(Modifier.width(16.dp))
 
-            // List info
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // List info
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            list.name,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colorScheme.onSurface
+                        )
+
+                        if (isActive) {
+                            Spacer(Modifier.width(8.dp))
+                            Surface(
+                                color = list.getColor(),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    "ACTIVE",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(4.dp))
+
                     Text(
-                        list.name,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colorScheme.onSurface
+                        "$itemCount items to buy",
+                        fontSize = 14.sp,
+                        color = colorScheme.onSurfaceVariant
                     )
 
-                    if (isActive) {
-                        Spacer(Modifier.width(8.dp))
-                        Surface(
-                            color = list.getColor(),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(
-                                "ACTIVE",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    // Show total cost
+                    if (totalCost > 0) {
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            "Total: ${PriceFormatter.format(totalCost)}",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = colorScheme.primary
+                        )
+                    }
+                }
+
+                // Action buttons
+                Row {
+                    // Edit button
+                    IconButton(onClick = onEdit) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            tint = colorScheme.primary
+                        )
+                    }
+
+                    // Delete button (only show if not active)
+                    if (!isActive) {
+                        IconButton(onClick = onDelete) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = colorScheme.error.copy(alpha = 0.7f)
                             )
                         }
                     }
                 }
-
-                Spacer(Modifier.height(4.dp))
-
-                Text(
-                    "$itemCount items to buy",
-                    fontSize = 14.sp,
-                    color = colorScheme.onSurfaceVariant
-                )
             }
 
-            // Action buttons
-            Row {
-                // Edit button
-                IconButton(onClick = onEdit) {
-                    Icon(
-                        Icons.Default.Edit,
-                        contentDescription = "Edit",
-                        tint = colorScheme.primary
-                    )
-                }
+            // Budget indicator (if budget is set)
+            if (list.budget > 0) {
+                Spacer(Modifier.height(12.dp))
 
-                // Delete button (only show if not active)
-                if (!isActive) {
-                    IconButton(onClick = onDelete) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = "Delete",
-                            tint = colorScheme.error.copy(alpha = 0.7f)
+                // Budget progress bar
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "Budget",
+                            fontSize = 12.sp,
+                            color = colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            PriceFormatter.format(list.budget),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = when (budgetStatus) {
+                                BudgetStatus.OVER_BUDGET -> colorScheme.error
+                                BudgetStatus.NEAR_BUDGET -> Color(0xFFFFC107)
+                                else -> colorScheme.onSurfaceVariant
+                            }
                         )
                     }
+
+                    Spacer(Modifier.height(6.dp))
+
+                    LinearProgressIndicator(
+                        progress = { (totalCost / list.budget).toFloat().coerceIn(0f, 1f) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp)),
+                        color = when (budgetStatus) {
+                            BudgetStatus.OVER_BUDGET -> colorScheme.error
+                            BudgetStatus.NEAR_BUDGET -> Color(0xFFFFC107)
+                            else -> list.getColor()
+                        },
+                        trackColor = colorScheme.surfaceVariant
+                    )
                 }
             }
         }
@@ -324,12 +394,18 @@ fun ListDialog(
     initialName: String,
     initialIcon: String,
     initialColor: String,
+    initialBudget: Double,
     onDismiss: () -> Unit,
-    onSave: (name: String, icon: String, color: String) -> Unit
+    onSave: (name: String, icon: String, color: String, budget: Double) -> Unit
 ) {
     var name by remember { mutableStateOf(initialName) }
     var selectedIcon by remember { mutableStateOf(initialIcon) }
     var selectedColor by remember { mutableStateOf(initialColor) }
+    var budgetText by remember {
+        mutableStateOf(
+            if (initialBudget > 0) PriceFormatter.formatWithoutSymbol(initialBudget) else ""
+        )
+    }
     val colorScheme = MaterialTheme.colorScheme
 
     Dialog(onDismissRequest = onDismiss) {
@@ -361,6 +437,32 @@ fun ListDialog(
                         placeholder = { Text("e.g., Weekly Shopping") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp)
+                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // Budget input (NEW)
+                    OutlinedTextField(
+                        value = budgetText,
+                        onValueChange = { newValue ->
+                            if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                                budgetText = newValue
+                            }
+                        },
+                        label = { Text("Budget (Optional)") },
+                        placeholder = { Text("0.00") },
+                        leadingIcon = {
+                            Text(
+                                "₱",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colorScheme.primary
+                            )
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        singleLine = true
                     )
 
                     Spacer(Modifier.height(20.dp))
@@ -481,7 +583,8 @@ fun ListDialog(
                         Button(
                             onClick = {
                                 if (name.isNotBlank()) {
-                                    onSave(name, selectedIcon, selectedColor)
+                                    val budget = budgetText.toDoubleOrNull() ?: 0.0
+                                    onSave(name, selectedIcon, selectedColor, budget)
                                 }
                             },
                             enabled = name.isNotBlank(),

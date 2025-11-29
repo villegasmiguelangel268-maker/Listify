@@ -6,11 +6,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -21,22 +20,17 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.listify.CATEGORY_LIST
-import com.example.listify.CATEGORY_UI_MAP
-import com.example.listify.GroceryItem
-import com.example.listify.GroceryViewModel
+import com.example.listify.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.material3.MenuAnchorType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +40,7 @@ fun AddItemScreen(
 ) {
     var name by rememberSaveable { mutableStateOf("") }
     var quantity by rememberSaveable { mutableStateOf("1") }
+    var price by rememberSaveable { mutableStateOf("") }
     var selectedCategory by rememberSaveable { mutableStateOf("") }
     var customCategory by rememberSaveable { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
@@ -245,6 +240,56 @@ fun AddItemScreen(
                 }
             }
 
+            // Price Section
+            Column {
+                Text(
+                    "Price (Optional)",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.onSurface,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                OutlinedTextField(
+                    value = price,
+                    onValueChange = { newValue ->
+                        if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                            price = newValue
+                        }
+                    },
+                    placeholder = { Text("0.00") },
+                    leadingIcon = {
+                        Text(
+                            "₱",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.primary
+                        )
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colors.primary,
+                        unfocusedBorderColor = colors.outline.copy(alpha = 0.5f)
+                    ),
+                    singleLine = true
+                )
+
+                val priceValue = price.toDoubleOrNull() ?: 0.0
+                val qtyValue = quantity.toIntOrNull() ?: 1
+                if (priceValue > 0 && qtyValue > 1) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Total: ${PriceFormatter.format(priceValue * qtyValue)}",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = colors.primary,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                }
+            }
+
             // Category Section
             Column {
                 Text(
@@ -281,10 +326,7 @@ fun AddItemScreen(
                             }
                         },
                         modifier = Modifier
-                            .menuAnchor(
-                                type = MenuAnchorType.PrimaryNotEditable,
-                                enabled = true
-                            )
+                            .menuAnchor()
                             .fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -365,7 +407,8 @@ fun AddItemScreen(
                             name = name.trim(),
                             quantity = quantity.toIntOrNull() ?: 1,
                             category = finalCategory,
-                            isBought = false
+                            isBought = false,
+                            price = price.toDoubleOrNull() ?: 0.0
                         )
 
                         vm.add(newItem)

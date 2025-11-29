@@ -5,20 +5,67 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 
+// ============================================
+// Category UI Data Class
+// ============================================
 data class CategoryUI(
-    val label: String,
-    val color: Color,
-    val icon: ImageVector
+    val icon: ImageVector,
+    val color: Color
 )
 
+// ============================================
+// Category List
+// ============================================
+val CATEGORY_LIST = listOf(
+    "Fruits",
+    "Vegetables",
+    "Meat",
+    "Seafood",
+    "Snacks",
+    "Drinks",
+    "Frozen",
+    "Household",
+    "Others"
+)
+
+// ============================================
+// Category UI Mapping
+// ============================================
 val CATEGORY_UI_MAP = mapOf(
-    "Fruits" to CategoryUI("Fruits", Color(0xFFE57373), Icons.Default.LocalGroceryStore),
-    "Vegetables" to CategoryUI("Vegetables", Color(0xFF81C784), Icons.Default.Eco),
-    "Meat" to CategoryUI("Meat", Color(0xFFD32F2F), Icons.Default.Restaurant),
-    "Seafood" to CategoryUI("Seafood", Color(0xFF0288D1), Icons.Default.Water),
-    "Snacks" to CategoryUI("Snacks", Color(0xFFFFA726), Icons.Default.Fastfood),
-    "Drinks" to CategoryUI("Drinks", Color(0xFF42A5F5), Icons.Default.LocalDrink),
-    "Frozen" to CategoryUI("Frozen", Color(0xFF00BCD4), Icons.Default.AcUnit),
-    "Household" to CategoryUI("Household", Color(0xFF8D6E63), Icons.Default.Home),
-    "Others" to CategoryUI("Others", Color(0xFF9E9E9E), Icons.Default.Category)
+    "Fruits" to CategoryUI(
+        icon = Icons.Default.LocalFlorist,
+        color = Color(0xFFE57373)
+    ),
+    "Vegetables" to CategoryUI(
+        icon = Icons.Default.Eco,
+        color = Color(0xFF81C784)
+    ),
+    "Meat" to CategoryUI(
+        icon = Icons.Default.Restaurant,
+        color = Color(0xFFD32F2F)
+    ),
+    "Seafood" to CategoryUI(
+        icon = Icons.Default.WaterDrop,
+        color = Color(0xFF0288D1)
+    ),
+    "Snacks" to CategoryUI(
+        icon = Icons.Default.Fastfood,
+        color = Color(0xFFFFA726)
+    ),
+    "Drinks" to CategoryUI(
+        icon = Icons.Default.LocalDrink,
+        color = Color(0xFF42A5F5)
+    ),
+    "Frozen" to CategoryUI(
+        icon = Icons.Default.AcUnit,
+        color = Color(0xFF00BCD4)
+    ),
+    "Household" to CategoryUI(
+        icon = Icons.Default.Home,
+        color = Color(0xFF8D6E63)
+    ),
+    "Others" to CategoryUI(
+        icon = Icons.Default.Category,
+        color = Color(0xFF9E9E9E)
+    )
 )

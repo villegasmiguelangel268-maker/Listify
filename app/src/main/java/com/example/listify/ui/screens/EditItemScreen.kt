@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -20,19 +21,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.listify.CATEGORY_LIST
-import com.example.listify.CATEGORY_UI_MAP
-import com.example.listify.GroceryItem
-import com.example.listify.GroceryViewModel
+import com.example.listify.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.material3.MenuAnchorType
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,27 +37,43 @@ fun EditItemScreen(
     navController: NavController,
     vm: GroceryViewModel = viewModel()
 ) {
-    // Get the item from savedStateHandle
+    // ⭐ FIX: Use currentBackStackEntry instead of previousBackStackEntry
     val editItem = navController.previousBackStackEntry
         ?.savedStateHandle
         ?.get<GroceryItem>("editItem")
+        ?: navController.currentBackStackEntry
+            ?.savedStateHandle
+            ?.get<GroceryItem>("editItem")
 
-    // Initialize state with editItem values
-    var name by remember { mutableStateOf(editItem?.name ?: "") }
-    var quantity by remember { mutableStateOf(editItem?.quantity?.toString() ?: "1") }
-    var selectedCategory by remember { mutableStateOf(editItem?.category ?: "") }
+    // Handle null and avoid crash
+    if (editItem == null) {
+        LaunchedEffect(Unit) {
+            navController.popBackStack()
+        }
+
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    var name by remember { mutableStateOf(editItem.name) }
+    var quantity by remember { mutableStateOf(editItem.quantity.toString()) }
+    var price by remember { mutableStateOf(
+        if (editItem.price > 0)
+            PriceFormatter.formatWithoutSymbol(editItem.price)
+        else
+            ""
+    ) }
+    var selectedCategory by remember { mutableStateOf(editItem.category) }
     var customCategory by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
 
     val colors = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
-
-    // If editItem is null, navigate back
-    LaunchedEffect(editItem) {
-        if (editItem == null) {
-            navController.popBackStack()
-        }
-    }
 
     fun startRepeating(action: () -> Unit, stopFlag: MutableState<Boolean>) {
         scope.launch {
@@ -86,7 +99,14 @@ fun EditItemScreen(
                         .padding(horizontal = 8.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = {
+                        // ⭐ FIX: Remove from CURRENT entry, not previous
+                        navController.currentBackStackEntry
+                            ?.savedStateHandle
+                            ?.remove<GroceryItem>("editItem")
+
+                        navController.popBackStack()
+                    }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
@@ -114,7 +134,7 @@ fun EditItemScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
 
-            // Item Name Section
+            // ITEM NAME
             Column {
                 Text(
                     "Item Name",
@@ -137,7 +157,7 @@ fun EditItemScreen(
                 )
             }
 
-            // Quantity Section
+            // QUANTITY
             Column {
                 Text(
                     "Quantity",
@@ -155,7 +175,7 @@ fun EditItemScreen(
                     val decHold = remember { mutableStateOf(false) }
                     val incHold = remember { mutableStateOf(false) }
 
-                    // Decrease button
+                    // DECREASE BUTTON
                     Surface(
                         color = colors.primaryContainer,
                         shape = CircleShape,
@@ -192,7 +212,7 @@ fun EditItemScreen(
                         }
                     }
 
-                    // Quantity Display
+                    // DISPLAY QUANTITY
                     Surface(
                         color = colors.surface,
                         shape = RoundedCornerShape(16.dp),
@@ -215,7 +235,7 @@ fun EditItemScreen(
                         }
                     }
 
-                    // Increase button
+                    // INCREASE BUTTON
                     Surface(
                         color = colors.primary,
                         shape = CircleShape,
@@ -254,7 +274,57 @@ fun EditItemScreen(
                 }
             }
 
-            // Category Section
+            // PRICE
+            Column {
+                Text(
+                    "Price (Optional)",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.onSurface,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                OutlinedTextField(
+                    value = price,
+                    onValueChange = { newValue ->
+                        if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d{0,2}$"))) {
+                            price = newValue
+                        }
+                    },
+                    placeholder = { Text("0.00") },
+                    leadingIcon = {
+                        Text(
+                            "₱",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.primary
+                        )
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colors.primary,
+                        unfocusedBorderColor = colors.outline.copy(alpha = 0.5f)
+                    ),
+                    singleLine = true
+                )
+
+                val priceValue = price.toDoubleOrNull() ?: 0.0
+                val qtyValue = quantity.toIntOrNull() ?: 1
+                if (priceValue > 0 && qtyValue > 1) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Total: ${PriceFormatter.format(priceValue * qtyValue)}",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = colors.primary,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                }
+            }
+
+            // CATEGORY
             Column {
                 Text(
                     "Category",
@@ -290,10 +360,7 @@ fun EditItemScreen(
                             }
                         },
                         modifier = Modifier
-                            .menuAnchor(
-                                type = MenuAnchorType.PrimaryNotEditable,
-                                enabled = true
-                            )
+                            .menuAnchor()
                             .fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -337,7 +404,6 @@ fun EditItemScreen(
                     }
                 }
 
-                // Custom category input
                 AnimatedVisibility(
                     visible = selectedCategory == "Others",
                     enter = fadeIn() + expandVertically(),
@@ -361,10 +427,10 @@ fun EditItemScreen(
 
             Spacer(Modifier.weight(1f))
 
-            // Save Button
+            // SAVE BUTTON
             Button(
                 onClick = {
-                    if (name.isNotBlank() && editItem != null) {
+                    if (name.isNotBlank()) {
                         val finalCategory =
                             if (selectedCategory == "Others") customCategory.trim()
                             else selectedCategory
@@ -372,10 +438,17 @@ fun EditItemScreen(
                         val updatedItem = editItem.copy(
                             name = name.trim(),
                             quantity = quantity.toIntOrNull() ?: 1,
-                            category = finalCategory
+                            category = finalCategory,
+                            price = price.toDoubleOrNull() ?: 0.0
                         )
 
                         vm.update(updatedItem)
+
+                        // ⭐ FIX: Remove from CURRENT entry
+                        navController.currentBackStackEntry
+                            ?.savedStateHandle
+                            ?.remove<GroceryItem>("editItem")
+
                         navController.popBackStack()
                     }
                 },

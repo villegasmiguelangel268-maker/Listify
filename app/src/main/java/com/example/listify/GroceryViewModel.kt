@@ -41,7 +41,8 @@ class GroceryViewModel(
                 id = 0,
                 name = "My Grocery List",
                 colorHex = "#4CAF50",
-                icon = "🛒"
+                icon = "🛒",
+                budget = 0.0
             )
             _lists.add(defaultList)
             updateListItemCount(defaultList.id)
@@ -101,6 +102,48 @@ class GroceryViewModel(
             val updatedList = list.copy(itemCount = count)
             updateList(updatedList)
         }
+    }
+
+    // ========== PRICE CALCULATIONS ==========
+
+    fun getTotalCost(listId: Int): Double {
+        return _allItems
+            .filter { it.listId == listId }
+            .sumOf { it.getTotalPrice() }
+    }
+
+    fun getTotalCostUnbought(listId: Int): Double {
+        return _allItems
+            .filter { it.listId == listId && !it.isBought }
+            .sumOf { it.getTotalPrice() }
+    }
+
+    fun getBudgetStatus(listId: Int): BudgetStatus {
+        val list = _lists.firstOrNull { it.id == listId } ?: return BudgetStatus.NO_BUDGET
+
+        if (list.budget <= 0.0) return BudgetStatus.NO_BUDGET
+
+        val totalCost = getTotalCost(listId)
+        val percentage = (totalCost / list.budget) * 100
+
+        return when {
+            percentage > 100 -> BudgetStatus.OVER_BUDGET
+            percentage >= 80 -> BudgetStatus.NEAR_BUDGET
+            else -> BudgetStatus.UNDER_BUDGET
+        }
+    }
+
+    fun getRemainingBudget(listId: Int): Double {
+        val list = _lists.firstOrNull { it.id == listId } ?: return 0.0
+        if (list.budget <= 0.0) return 0.0
+        return list.budget - getTotalCost(listId)
+    }
+
+    fun getBudgetPercentage(listId: Int): Float {
+        val list = _lists.firstOrNull { it.id == listId } ?: return 0f
+        if (list.budget <= 0.0) return 0f
+        val totalCost = getTotalCost(listId)
+        return ((totalCost / list.budget) * 100).toFloat().coerceIn(0f, 100f)
     }
 
     // ========== ITEM OPERATIONS ==========

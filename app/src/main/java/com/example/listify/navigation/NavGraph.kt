@@ -14,15 +14,12 @@ import com.example.listify.ui.screens.SplashScreen
 
 @Composable
 fun AppNavGraph(navController: NavHostController) {
-
-    // ⭐ Create ONE shared ViewModel for ALL screens
     val sharedViewModel: GroceryViewModel = viewModel()
 
     NavHost(
         navController = navController,
         startDestination = "splash"
     ) {
-
         composable("splash") {
             SplashScreen(navController)
         }
@@ -39,6 +36,7 @@ fun AppNavGraph(navController: NavHostController) {
             AddItemScreen(navController, vm = sharedViewModel)
         }
 
+        // Use savedStateHandle approach (simpler)
         composable("edit") {
             EditItemScreen(
                 navController = navController,

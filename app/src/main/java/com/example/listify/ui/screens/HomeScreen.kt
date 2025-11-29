@@ -33,9 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.listify.GroceryItem
-import com.example.listify.GroceryViewModel
-import com.example.listify.CATEGORY_UI_MAP
+import com.example.listify.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 
@@ -53,14 +51,22 @@ fun HomeScreen(
     var pullOffset by remember { mutableStateOf(0f) }
     val listState = rememberLazyListState()
 
+    val currentListId by vm.currentListId.collectAsState()
+
     val filteredList = vm.items.filter {
         it.name.contains(searchQuery, ignoreCase = true) ||
                 it.category.contains(searchQuery, ignoreCase = true)
     }
 
-    // Separate bought and unbought items
+    // Separate bought and unbought
     val unboughtItems = filteredList.filter { !it.isBought }
     val boughtItems = filteredList.filter { it.isBought }
+
+    // Price calculations
+    val totalCost = vm.getTotalCost(currentListId)
+    val totalUnbought = vm.getTotalCostUnbought(currentListId)
+    val currentList = vm.getCurrentList()
+    val budgetStatus = vm.getBudgetStatus(currentListId)
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -146,7 +152,7 @@ fun HomeScreen(
                     }
             ) {
 
-                // Modern Header with List Selector
+                // HEADER
                 Surface(
                     color = colorScheme.primary,
                     shadowElevation = 0.dp,
@@ -154,21 +160,22 @@ fun HomeScreen(
                         .fillMaxWidth()
                         .statusBarsPadding()
                 ) {
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 24.dp, end = 16.dp, top = 20.dp, bottom = 24.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(start = 24.dp, end = 16.dp, top = 20.dp, bottom = 20.dp)
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.clickable {
-                                    navController.navigate("lists")
-                                }
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { navController.navigate("lists") }
                             ) {
-                                val currentList = vm.getCurrentList()
                                 Text(
                                     currentList?.icon ?: "🛒",
                                     fontSize = 28.sp
@@ -193,30 +200,107 @@ fun HomeScreen(
                                 }
                             }
 
-                            Spacer(Modifier.height(8.dp))
-
-                            Text(
-                                "${unboughtItems.size} items to buy",
-                                color = colorScheme.onPrimary.copy(alpha = 0.8f),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium
-                            )
+                            IconButton(onClick = { navController.navigate("lists") }) {
+                                Icon(
+                                    Icons.Default.Menu,
+                                    contentDescription = "View Lists",
+                                    tint = colorScheme.onPrimary,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
                         }
 
-                        IconButton(
-                            onClick = { navController.navigate("lists") }
+                        Spacer(Modifier.height(12.dp))
+
+                        // Price summary card
+                        Surface(
+                            color = colorScheme.onPrimary.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(16.dp)
                         ) {
-                            Icon(
-                                Icons.Default.Menu,
-                                contentDescription = "View Lists",
-                                tint = colorScheme.onPrimary,
-                                modifier = Modifier.size(28.dp)
-                            )
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column {
+                                        Text(
+                                            "${unboughtItems.size} items to buy",
+                                            color = colorScheme.onPrimary.copy(alpha = 0.8f),
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(
+                                            PriceFormatter.format(totalUnbought),
+                                            color = colorScheme.onPrimary,
+                                            fontSize = 20.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+
+                                    if (currentList?.budget != null && currentList.budget > 0) {
+                                        Column(horizontalAlignment = Alignment.End) {
+                                            Text(
+                                                "Budget",
+                                                color = colorScheme.onPrimary.copy(alpha = 0.8f),
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                            Spacer(Modifier.height(4.dp))
+                                            Text(
+                                                PriceFormatter.format(currentList.budget),
+                                                color = when (budgetStatus) {
+                                                    BudgetStatus.OVER_BUDGET -> colorScheme.error
+                                                    BudgetStatus.NEAR_BUDGET -> Color(0xFFFFC107)
+                                                    else -> colorScheme.onPrimary
+                                                },
+                                                fontSize = 16.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if (currentList?.budget != null && currentList.budget > 0) {
+                                    Spacer(Modifier.height(12.dp))
+
+                                    LinearProgressIndicator(
+                                        progress = { (totalCost / currentList.budget).toFloat().coerceIn(0f, 1f) },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(8.dp)
+                                            .clip(RoundedCornerShape(4.dp)),
+                                        color = when (budgetStatus) {
+                                            BudgetStatus.OVER_BUDGET -> colorScheme.error
+                                            BudgetStatus.NEAR_BUDGET -> Color(0xFFFFC107)
+                                            else -> colorScheme.onPrimary
+                                        },
+                                        trackColor = colorScheme.onPrimary.copy(alpha = 0.2f)
+                                    )
+
+                                    Spacer(Modifier.height(4.dp))
+
+                                    val remaining = vm.getRemainingBudget(currentListId)
+                                    Text(
+                                        if (remaining >= 0)
+                                            "${PriceFormatter.format(remaining)} left"
+                                        else
+                                            "${PriceFormatter.format(kotlin.math.abs(remaining))} over budget",
+                                        color = colorScheme.onPrimary.copy(alpha = 0.7f),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
                         }
                     }
                 }
 
-                // Search bar with modern design
+                // SEARCH BAR
                 Surface(
                     color = colorScheme.surface,
                     shape = RoundedCornerShape(28.dp),
@@ -263,13 +347,11 @@ fun HomeScreen(
 
                 Spacer(Modifier.height(20.dp))
 
-                // List with sections
+                // LIST CONTENT
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .graphicsLayer {
-                            translationY = if (isRefreshing) 0f else pullOffset
-                        }
+                        .graphicsLayer { translationY = if (isRefreshing) 0f else pullOffset }
                 ) {
                     LazyColumn(
                         state = listState,
@@ -277,7 +359,7 @@ fun HomeScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        // Active Items Section
+                        // UNBOUGHT
                         if (unboughtItems.isNotEmpty()) {
                             item {
                                 Text(
@@ -302,7 +384,7 @@ fun HomeScreen(
                             }
                         }
 
-                        // Completed Items Section
+                        // BOUGHT
                         if (boughtItems.isNotEmpty()) {
                             item {
                                 Spacer(Modifier.height(12.dp))
@@ -328,7 +410,7 @@ fun HomeScreen(
                             }
                         }
 
-                        // Empty state
+                        // EMPTY STATE
                         if (filteredList.isEmpty()) {
                             item {
                                 Column(
@@ -337,10 +419,7 @@ fun HomeScreen(
                                         .padding(vertical = 64.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    Text(
-                                        "🛒",
-                                        fontSize = 64.sp
-                                    )
+                                    Text("🛒", fontSize = 64.sp)
                                     Spacer(Modifier.height(16.dp))
                                     Text(
                                         "No items yet",
@@ -358,15 +437,12 @@ fun HomeScreen(
                             }
                         }
 
-                        // Bottom padding
-                        item {
-                            Spacer(Modifier.height(80.dp))
-                        }
+                        item { Spacer(Modifier.height(80.dp)) }
                     }
                 }
             }
 
-            // Pull to refresh indicator
+            // Refresh Indicator
             if (pullOffset > 0f || isRefreshing) {
                 Box(
                     modifier = Modifier
@@ -423,9 +499,7 @@ fun ModernGroceryCard(
                     }
                 }
                 true
-            } else {
-                false
-            }
+            } else false
         }
     )
 
@@ -470,8 +544,12 @@ fun ModernGroceryCard(
                 .fillMaxWidth()
                 .scale(scale)
                 .clickable {
-                    navController.getBackStackEntry("home")
-                        .savedStateHandle["editItem"] = item
+                    // Store item in the savedStateHandle
+                    navController.currentBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("editItem", item)
+
+                    // Navigate to edit screen
                     navController.navigate("edit")
                 }
         ) {
@@ -481,7 +559,7 @@ fun ModernGroceryCard(
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
-                // Custom Checkbox
+                // Checkbox
                 Box(
                     modifier = Modifier
                         .size(28.dp)
@@ -512,19 +590,38 @@ fun ModernGroceryCard(
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text(
-                        item.name,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (item.isBought)
-                            colorScheme.onSurfaceVariant
-                        else
-                            colorScheme.onSurface,
-                        textDecoration = if (item.isBought)
-                            TextDecoration.LineThrough
-                        else
-                            null
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            item.name,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (item.isBought)
+                                colorScheme.onSurfaceVariant
+                            else
+                                colorScheme.onSurface,
+                            textDecoration = if (item.isBought)
+                                TextDecoration.LineThrough
+                            else null,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+
+                        if (item.price > 0) {
+                            Text(
+                                PriceFormatter.format(item.getTotalPrice()),
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (item.isBought)
+                                    colorScheme.onSurfaceVariant
+                                else
+                                    colorScheme.primary,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
 
                     Spacer(Modifier.height(6.dp))
 
@@ -564,6 +661,14 @@ fun ModernGroceryCard(
                             fontWeight = FontWeight.Medium,
                             color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
+
+                        if (item.price > 0 && item.quantity > 1) {
+                            Text(
+                                text = " • ${PriceFormatter.format(item.price)}/ea",
+                                fontSize = 11.sp,
+                                color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        }
                     }
                 }
 
