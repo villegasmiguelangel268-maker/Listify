@@ -5,6 +5,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -487,7 +489,6 @@ fun ModernGroceryCard(
         confirmValueChange = { dismissValue ->
             if (dismissValue == SwipeToDismissBoxValue.EndToStart) {
                 vm.deleteWithUndo(item)
-
                 scope.launch {
                     val result = snackbarHostState.showSnackbar(
                         message = "Item deleted",
@@ -513,43 +514,55 @@ fun ModernGroceryCard(
                         .fillMaxSize()
                         .clip(RoundedCornerShape(20.dp))
                         .background(colorScheme.errorContainer)
-                        .padding(end = 24.dp),
+                        .padding(end = 20.dp),
                     contentAlignment = Alignment.CenterEnd
                 ) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = null,
-                        tint = colorScheme.error,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = null,
+                            tint = colorScheme.error,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Delete",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = colorScheme.error
+                        )
+                    }
                 }
             }
         }
     ) {
         val categoryUI = CATEGORY_UI_MAP[item.category] ?: CATEGORY_UI_MAP["Others"]!!
         val scale by animateFloatAsState(
-            targetValue = if (item.isBought) 0.98f else 1f,
-            animationSpec = spring(stiffness = Spring.StiffnessLow)
+            targetValue = if (item.isBought) 0.97f else 1f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessLow
+            )
         )
 
         Surface(
             color = if (item.isBought)
-                colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                colorScheme.surfaceVariant.copy(alpha = 0.4f)
             else
                 colorScheme.surface,
             shape = RoundedCornerShape(20.dp),
-            tonalElevation = if (item.isBought) 0.dp else 2.dp,
-            shadowElevation = if (item.isBought) 0.dp else 4.dp,
+            tonalElevation = if (item.isBought) 0.dp else 1.dp,
+            shadowElevation = if (item.isBought) 0.dp else 3.dp,
             modifier = Modifier
                 .fillMaxWidth()
                 .scale(scale)
                 .clickable {
-                    // Store item in the savedStateHandle
                     navController.currentBackStackEntry
                         ?.savedStateHandle
                         ?.set("editItem", item)
-
-                    // Navigate to edit screen
                     navController.navigate("edit")
                 }
         ) {
@@ -557,39 +570,48 @@ fun ModernGroceryCard(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
-                // Checkbox
+                // Modern Checkbox with Animation
+                val checkboxColor by animateColorAsState(
+                    targetValue = if (item.isBought)
+                        colorScheme.primary
+                    else
+                        colorScheme.surfaceVariant,
+                    animationSpec = tween(durationMillis = 200)
+                )
+
                 Box(
                     modifier = Modifier
-                        .size(28.dp)
+                        .size(32.dp)
                         .clip(CircleShape)
-                        .background(
-                            if (item.isBought)
-                                colorScheme.primary
-                            else
-                                colorScheme.surfaceVariant
-                        )
-                        .clickable {
+                        .background(checkboxColor)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = rememberRipple(bounded = true, radius = 20.dp)
+                        ) {
                             vm.update(item.copy(isBought = !item.isBought))
                         },
                     contentAlignment = Alignment.Center
                 ) {
+                    // Animated Check Icon
                     if (item.isBought) {
                         Icon(
                             Icons.Outlined.CheckCircle,
                             contentDescription = null,
                             tint = colorScheme.onPrimary,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
 
-                Spacer(Modifier.width(16.dp))
+                Spacer(Modifier.width(14.dp))
 
+                // Content Column
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
+                    // Item Name and Price Row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -600,98 +622,134 @@ fun ModernGroceryCard(
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = if (item.isBought)
-                                colorScheme.onSurfaceVariant
+                                colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             else
                                 colorScheme.onSurface,
                             textDecoration = if (item.isBought)
                                 TextDecoration.LineThrough
                             else null,
+                            maxLines = 1,
                             modifier = Modifier.weight(1f, fill = false)
                         )
 
                         if (item.price > 0) {
-                            Text(
-                                PriceFormatter.format(item.getTotalPrice()),
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
+                            Spacer(Modifier.width(8.dp))
+
+                            Surface(
                                 color = if (item.isBought)
-                                    colorScheme.onSurfaceVariant
+                                    colorScheme.surfaceVariant.copy(alpha = 0.5f)
                                 else
-                                    colorScheme.primary,
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
+                                    colorScheme.primaryContainer.copy(alpha = 0.3f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text(
+                                    PriceFormatter.format(item.getTotalPrice()),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (item.isBought)
+                                        colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    else
+                                        colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                )
+                            }
                         }
                     }
 
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
 
+                    // Category and Details Row
                     Row(
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
+                        // Modern Category Badge
                         Surface(
-                            color = categoryUI.color.copy(alpha = 0.12f),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.padding(end = 8.dp)
+                            color = categoryUI.color.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(10.dp)
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                             ) {
                                 Icon(
                                     categoryUI.icon,
                                     contentDescription = null,
                                     tint = categoryUI.color,
-                                    modifier = Modifier.size(14.dp)
+                                    modifier = Modifier.size(13.dp)
                                 )
 
-                                Spacer(Modifier.width(4.dp))
+                                Spacer(Modifier.width(5.dp))
 
                                 Text(
                                     text = item.category,
                                     color = categoryUI.color,
                                     fontSize = 11.sp,
-                                    fontWeight = FontWeight.Medium
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
                         }
 
-                        Text(
-                            text = "Qty: ${item.quantity}",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                        )
+                        Spacer(Modifier.width(8.dp))
 
-                        if (item.price > 0 && item.quantity > 1) {
+                        // Quantity Badge
+                        Surface(
+                            color = colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
                             Text(
-                                text = " • ${PriceFormatter.format(item.price)}/ea",
-                                fontSize = 11.sp,
+                                text = "× ${item.quantity}",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                            )
+                        }
+
+                        // Unit Price (if multiple quantity)
+                        if (item.price > 0 && item.quantity > 1) {
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = "${PriceFormatter.format(item.price)}/ea",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium,
                                 color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                             )
                         }
                     }
                 }
 
-                IconButton(
-                    onClick = {
-                        vm.deleteWithUndo(item)
-                        scope.launch {
-                            val result = snackbarHostState.showSnackbar(
-                                message = "Item deleted",
-                                actionLabel = "Undo",
-                                duration = SnackbarDuration.Short
-                            )
-                            if (result == SnackbarResult.ActionPerformed) {
-                                vm.undoDelete()
+                Spacer(Modifier.width(8.dp))
+
+                // Delete Button
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(colorScheme.errorContainer.copy(alpha = 0.3f))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = rememberRipple(bounded = true, radius = 20.dp)
+                        ) {
+                            vm.deleteWithUndo(item)
+                            scope.launch {
+                                val result = snackbarHostState.showSnackbar(
+                                    message = "Item deleted",
+                                    actionLabel = "Undo",
+                                    duration = SnackbarDuration.Short
+                                )
+                                if (result == SnackbarResult.ActionPerformed) {
+                                    vm.undoDelete()
+                                }
                             }
-                        }
-                    }
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         Icons.Default.Delete,
                         contentDescription = "Delete",
-                        tint = colorScheme.error.copy(alpha = 0.7f),
-                        modifier = Modifier.size(20.dp)
+                        tint = colorScheme.error,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
